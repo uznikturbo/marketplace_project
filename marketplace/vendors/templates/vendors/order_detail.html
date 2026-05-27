@@ -1,0 +1,254 @@
+{% extends "core/base.html" %}
+
+{% block title %}Замовлення #{{ order.id }} — Seller Hub{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Базові стилі для сайдбару залишаються */
+    .vendor-wrapper {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+        align-items: start;
+        margin-top: 20px;
+        margin-bottom: 40px;
+    }
+    @media (max-width: 860px) {
+        .vendor-wrapper { grid-template-columns: 1fr; }
+    }
+
+    .vendor-sidebar { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 0; }
+    .vendor-sidebar-title { font-size: 13px; font-weight: 700; color: var(--gray-2); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 20px 12px; border-bottom: 1px solid var(--gray-4); margin-bottom: 8px; }
+    .vendor-nav { list-style: none; }
+    .vendor-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--dark); text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent; }
+    .vendor-nav li a:hover, .vendor-nav li a.active { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
+    .vendor-nav svg { width: 20px; height: 20px; color: currentColor; }
+
+    /* Контент деталей замовлення */
+    .vendor-content { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; }
+    
+    .order-header {
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid var(--gray-4); padding-bottom: 20px; margin-bottom: 24px;
+        flex-wrap: wrap; gap: 16px;
+    }
+    .order-title h1 { font-size: 24px; font-weight: 800; color: var(--dark); margin-bottom: 4px; }
+    .order-title p { font-size: 13px; color: var(--gray-2); }
+    
+    .status-form { display: flex; align-items: center; gap: 12px; background: var(--gray-5); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--gray-4); }
+    .status-form select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--gray-4); font-weight: 600; font-size: 14px; outline: none; }
+    .btn-update { background: var(--green); color: var(--white); border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .btn-update:hover { background: var(--green-dark); }
+
+    /* Сітка карток з інфою */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px; }
+    .info-card { background: var(--gray-5); border: 1px solid var(--gray-4); border-radius: 12px; padding: 20px; }
+    .info-card h3 { font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .info-card h3 svg { width: 20px; height: 20px; color: var(--green); }
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-label { color: var(--gray-2); font-weight: 500; }
+    .info-val { color: var(--dark); font-weight: 600; text-align: right; max-width: 60%; }
+
+    /* Таблиця товарів */
+    .items-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .items-table th { text-align: left; padding: 12px; font-size: 13px; color: var(--gray-2); border-bottom: 2px solid var(--gray-4); font-weight: 600; text-transform: uppercase; }
+    .items-table td { padding: 16px 12px; border-bottom: 1px solid var(--gray-4); vertical-align: middle; }
+    .item-product { display: flex; align-items: center; gap: 12px; }
+    .item-img { width: 48px; height: 48px; border-radius: 8px; background: var(--white); border: 1px solid var(--gray-4); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .item-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .item-name { font-weight: 600; color: var(--dark); text-decoration: none; }
+    .item-name:hover { color: var(--green); }
+    
+    .order-total-box { margin-top: 24px; display: flex; justify-content: flex-end; }
+    .total-card { background: var(--gray-5); padding: 20px 32px; border-radius: 12px; border: 1px solid var(--gray-4); text-align: right; }
+    .total-card .label { font-size: 14px; color: var(--gray-2); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
+    .total-card .amount { font-size: 28px; font-weight: 800; color: var(--dark); }
+    .btn-back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--gray-2); text-decoration: none; transition: color 0.2s; white-space: nowrap; }
+    .btn-back:hover { color: var(--dark); }
+
+    /* ── АДАПТИВНІСТЬ ПРОДАВЦЯ (ТЕЛЕФОНИ) ── */
+    @media (max-width: 600px) {
+        .vendor-wrapper { margin-top: 10px; gap: 16px; }
+        .vendor-sidebar { border-radius: 8px; }
+        .vendor-content { padding: 20px 16px; }
+        .vendor-content h1, .vendor-header h1 { font-size: 20px; margin-bottom: 16px; }
+        
+        /* vendor.html: Кнопка додавання на всю ширину */
+        .vendor-header { flex-direction: column; align-items: stretch; gap: 12px; }
+        .btn-add { width: 100%; justify-content: center; }
+        
+        /* create_product / edit_product: Характеристики в стовпчик */
+        .property-row { flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 1px dashed var(--gray-4); }
+        .property-row input { flex: 1 1 100%; }
+        .btn-remove-prop { width: 100%; height: 36px; margin-top: 4px; }
+        .btn-save { width: 100%; justify-content: center; }
+        
+        /* order_detail.html: Картки клієнта та доставки */
+        .info-grid { grid-template-columns: 1fr; gap: 16px; }
+        .info-card { padding: 16px; }
+        .status-form { flex-direction: column; align-items: stretch; gap: 10px; }
+        .total-card { padding: 16px; width: 100%; text-align: center; }
+        .order-total-box { justify-content: center; }
+        .items-table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb" style="margin-bottom:16px;">
+    <a href="{% url 'home' %}">Головна</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'vendor_orders' %}">Замовлення</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>#{{ order.id }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="vendor-wrapper">
+    <!-- САЙДБАР -->
+    <aside class="vendor-sidebar">
+        <div class="vendor-sidebar-title">Seller Hub</div>
+        <ul class="vendor-nav">
+            <li><a href="{% url 'vendor_view' %}"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Мої товари</a></li>
+            <li><a href="{% url 'vendor_orders' %}" class="active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Замовлення</a></li>
+            <li><a href="{% url 'create_product' %}"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Додати товар</a></li>
+        </ul>
+    </aside>
+
+    <div class="vendor-content">
+        <!-- Шапка замовлення -->
+        <div class="order-header">
+            <div class="order-title">
+                <a href="{% url 'vendor_orders' %}" class="btn-back">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                    Назад до замовлень
+                </a>
+                <h1>Замовлення #{{ order.id }}</h1>
+                <p>{{ order.created_at|date:"d F Y, H:i" }}</p>
+            </div>
+            
+            <!-- Форма зміни статусу -->
+            <form method="POST" class="status-form">
+                {% csrf_token %}
+                <span style="font-size: 13px; font-weight: 700; color: var(--gray-2); text-transform: uppercase;">Статус:</span>
+                <select name="status">
+                    {% for val, label in order_statuses %}
+                        <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-update">Зберегти</button>
+            </form>
+        </div>
+
+        <!-- Інформація (Клієнт + Доставка) -->
+        <div class="info-grid">
+            <!-- Клієнт -->
+            <div class="info-card">
+                <h3>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Дані клієнта
+                </h3>
+                <div class="info-row">
+                    <span class="info-label">ПІБ</span>
+                    <span class="info-val">{{ order.first_name }} {{ order.last_name }} {{ order.middle_name|default_if_none:"" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Телефон</span>
+                    <span class="info-val">{{ order.number }}</span>
+                </div>
+                {% if order.email %}
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-val">{{ order.email }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Доставка та оплата -->
+            <div class="info-card">
+                <h3>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    Доставка та Оплата
+                </h3>
+                <div class="info-row">
+                    <span class="info-label">Спосіб доставки</span>
+                    <span class="info-val">{{ order.get_delivery_method_display }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Місто</span>
+                    <span class="info-val">{{ order.city }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Адреса/Відділення</span>
+                    <span class="info-val">{{ order.address }}</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--gray-4); margin: 12px 0;">
+                <div class="info-row">
+                    <span class="info-label">Оплата</span>
+                    <span class="info-val">{{ order.get_payment_method_display }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Статус оплати</span>
+                    <span class="info-val" style="{% if order.payment_status == 'paid' %}color: var(--green);{% endif %}">
+                        {{ order.get_payment_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {% if order.comment %}
+        <div class="info-card" style="margin-bottom: 32px; background: #fffde7; border-color: #fff59d;">
+            <h3 style="color: #f57f17;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="color: #f57f17;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Коментар до замовлення</h3>
+            <p style="font-size: 14px; color: var(--dark); line-height: 1.5; margin:0;">{{ order.comment }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Товари -->
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 16px;">Товари у замовленні</h3>
+        <div style="overflow-x: auto;">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th>Ціна</th>
+                        <th>К-сть</th>
+                        <th style="text-align: right;">Сума</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in vendor_items %}
+                    <tr>
+                        <td>
+                            <div class="item-product">
+                                <div class="item-img">
+                                    {% if item.product and item.product.images.first %}
+                                        <img src="{{ item.product.images.first.image_url }}" alt="фото">
+                                    {% else %}
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style="color: var(--gray-3);"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <a href="{% if item.product %}{% url 'product_detail' item.product.id %}{% else %}#{% endif %}" class="item-name" target="_blank">{{ item.name }}</a>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="font-weight: 600;">{{ item.price|floatformat:0 }} ₴</td>
+                        <td>{{ item.quantity }} шт.</td>
+                        <td style="text-align: right; font-weight: 700; color: var(--dark);">{{ item.total|floatformat:0 }} ₴</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="order-total-box">
+            <div class="total-card">
+                <div class="label">Разом за ваші товари</div>
+                <div class="amount">{{ vendor_total|floatformat:0 }} ₴</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

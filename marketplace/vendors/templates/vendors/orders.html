@@ -1,0 +1,318 @@
+{% extends "core/base.html" %}
+
+{% block title %}Замовлення — Seller Hub{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── БАЗОВІ СТИЛІ КАБІНЕТУ ── */
+    .vendor-wrapper {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+        align-items: start;
+        margin-top: 20px;
+        margin-bottom: 40px;
+    }
+    @media (max-width: 860px) {
+        .vendor-wrapper { grid-template-columns: 1fr; }
+    }
+
+    /* Сайдбар */
+    .vendor-sidebar {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 16px 0;
+    }
+    .vendor-sidebar-title {
+        font-size: 13px; font-weight: 700; color: var(--gray-2);
+        text-transform: uppercase; letter-spacing: 0.5px;
+        padding: 0 20px 12px; border-bottom: 1px solid var(--gray-4); margin-bottom: 8px;
+    }
+    .vendor-nav { list-style: none; }
+    .vendor-nav li a {
+        display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+        font-size: 14px; font-weight: 600; color: var(--dark);
+        text-decoration: none; transition: all 0.2s; border-left: 3px solid transparent;
+    }
+    .vendor-nav li a:hover, .vendor-nav li a.active {
+        background: var(--green-light); color: var(--green); border-left-color: var(--green);
+    }
+    .vendor-nav svg { width: 20px; height: 20px; color: currentColor; }
+
+    /* Основна частина */
+    .vendor-content {
+        background: var(--white); border-radius: var(--radius);
+        box-shadow: var(--shadow); padding: 32px;
+    }
+    .vendor-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+    }
+    .vendor-header h1 { font-size: 24px; font-weight: 800; color: var(--dark); }
+
+    /* ── СТАТИСТИКА ── */
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+        background: var(--gray-5); padding: 20px; border-radius: var(--radius);
+        border: 1px solid var(--gray-4);
+        display: flex; align-items: center; gap: 16px;
+    }
+    .stat-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stat-icon svg { width: 24px; height: 24px; }
+    .stat-info h3 { font-size: 13px; color: var(--gray-2); margin-bottom: 4px; text-transform: uppercase; font-weight: 700; }
+    .stat-info .value { font-size: 24px; font-weight: 800; color: var(--dark); line-height: 1; }
+
+    /* ── ФІЛЬТРИ ── */
+    .filters-bar {
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--white); padding: 16px; border-radius: var(--radius);
+        border: 1px solid var(--gray-4); margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+    }
+    .filter-group { display: flex; gap: 8px; align-items: center; }
+    .filter-label { font-size: 13px; font-weight: 700; color: var(--gray-2); margin-right: 4px; text-transform: uppercase;}
+    .filter-btn {
+        padding: 8px 16px; border-radius: 8px; text-decoration: none;
+        font-size: 13px; font-weight: 600; color: var(--gray-2);
+        background: var(--gray-5); border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+    .filter-btn:hover { background: var(--gray-4); color: var(--dark); }
+    .filter-btn.active {
+        background: var(--green-light); color: var(--green-dark);
+        border-color: var(--green); font-weight: 700;
+    }
+    select.form-select {
+        padding: 8px 12px; border-radius: 8px; border: 1px solid var(--gray-4);
+        background: var(--gray-5); color: var(--dark); font-weight: 600; font-size: 13px;
+        outline: none; cursor: pointer; transition: border-color 0.2s;
+    }
+    select.form-select:hover, select.form-select:focus { border-color: var(--green); }
+
+    /* ── ТАБЛИЦЯ ЗАМОВЛЕНЬ ── */
+    .table-responsive { overflow-x: auto; }
+    .vendor-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    .vendor-table th {
+        text-align: left; padding: 12px 16px; font-size: 13px; color: var(--gray-2);
+        border-bottom: 2px solid var(--gray-4); font-weight: 600; text-transform: uppercase;
+    }
+    .vendor-table td { padding: 16px; border-bottom: 1px solid var(--gray-4); vertical-align: middle; font-size: 14px; }
+    .vendor-table tr:hover td { background: var(--gray-5); }
+    
+    /* Статуси */
+    .status-badge { display: inline-block; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .status-new { background: #e3f2fd; color: #1565c0; }        /* Синій */
+    .status-processing { background: #fff3e0; color: #e65100; } /* Помаранчевий */
+    .status-shipped { background: #f3e5f5; color: #7b1fa2; }    /* Фіолетовий */
+    .status-completed { background: var(--green-light); color: var(--green-dark); } /* Зелений */
+    .status-cancelled { background: #ffebee; color: #c62828; }  /* Червоний */
+
+    /* Кнопки дій */
+    .action-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-icon {
+        width: 36px; height: 36px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; border: none; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-view { background: #e3f2fd; color: #1565c0; }
+    .btn-view:hover { background: #bbdefb; transform: translateY(-1px); }
+    .btn-icon svg { width: 18px; height: 18px; }
+
+    .empty-vendor { text-align: center; padding: 60px 20px; color: var(--gray-2); }
+
+    .btn-back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--gray-2); text-decoration: none; transition: color 0.2s; white-space: nowrap; }
+    .btn-back:hover { color: var(--dark); }
+
+    /* ── АДАПТИВНІСТЬ ПРОДАВЦЯ (ТЕЛЕФОНИ) ── */
+    @media (max-width: 600px) {
+        .vendor-wrapper { margin-top: 10px; gap: 16px; }
+        .vendor-sidebar { border-radius: 8px; }
+        .vendor-content { padding: 20px 16px; }
+        .vendor-content h1, .vendor-header h1 { font-size: 20px; margin-bottom: 16px; }
+        
+        /* vendor.html: Кнопка додавання на всю ширину */
+        .vendor-header { flex-direction: column; align-items: stretch; gap: 12px; }
+        .btn-add { width: 100%; justify-content: center; }
+        
+        /* create_product / edit_product: Характеристики в стовпчик */
+        .property-row { flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 1px dashed var(--gray-4); }
+        .property-row input { flex: 1 1 100%; }
+        .btn-remove-prop { width: 100%; height: 36px; margin-top: 4px; }
+        .btn-save { width: 100%; justify-content: center; }
+        
+        /* order_detail.html: Картки клієнта та доставки */
+        .info-grid { grid-template-columns: 1fr; gap: 16px; }
+        .info-card { padding: 16px; }
+        .status-form { flex-direction: column; align-items: stretch; gap: 10px; }
+        .total-card { padding: 16px; width: 100%; text-align: center; }
+        .order-total-box { justify-content: center; }
+        .items-table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb" style="margin-bottom:16px;">
+    <a href="/">Головна</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'vendor_view' %}">Кабінет продавця</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Замовлення</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="vendor-wrapper">
+    <!-- САЙДБАР -->
+    <aside class="vendor-sidebar">
+        <div class="vendor-sidebar-title">Seller Hub</div>
+        <ul class="vendor-nav">
+            <li>
+                <a href="{% url 'vendor_view' %}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    Мої товари
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'vendor_orders' %}" class="active">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Замовлення
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'create_product' %}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Додати товар
+                </a>
+            </li>
+            <li style="margin-top: 16px; border-top: 1px solid var(--gray-4); padding-top: 8px;">
+                <a href="{% url 'profile' %}" style="color: var(--gray-2);">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Повернутись у профіль
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <div class="vendor-content">
+        <div class="vendor-header">
+            <h1>Управління замовленнями</h1>
+            <a href="{% url 'vendor_view' %}" class="btn-back">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Назад до товарів
+            </a>
+        </div>
+        
+
+        <!-- СТАТИСТИКА -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e8f5e9; color: var(--green);">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <div class="stat-info">
+                    <h3>Дохід за період</h3>
+                    <div class="value">{{ total_revenue|floatformat:0 }} ₴</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e3f2fd; color: #1565c0;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                </div>
+                <div class="stat-info">
+                    <h3>Кількість замовлень</h3>
+                    <div class="value">{{ total_orders_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ФІЛЬТРИ -->
+        <form method="GET" class="filters-bar" id="filterForm">
+            <div class="filter-group">
+                <span class="filter-label">Період:</span>
+                <a href="?period=week{% if status_filter %}&status={{ status_filter }}{% endif %}" class="filter-btn {% if period == 'week' %}active{% endif %}">Тиждень</a>
+                <a href="?period=month{% if status_filter %}&status={{ status_filter }}{% endif %}" class="filter-btn {% if period == 'month' %}active{% endif %}">Місяць</a>
+                <a href="?period=all{% if status_filter %}&status={{ status_filter }}{% endif %}" class="filter-btn {% if period == 'all' %}active{% endif %}">За весь час</a>
+                <input type="hidden" name="period" value="{{ period }}">
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">Статус:</span>
+                <select name="status" class="form-select" onchange="document.getElementById('filterForm').submit();">
+                    <option value="">Всі статуси</option>
+                    {% for val, label in order_statuses %}
+                        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+
+        <!-- ТАБЛИЦЯ ЗАМОВЛЕНЬ -->
+        {% if orders %}
+        <div class="table-responsive">
+            <table class="vendor-table">
+                <thead>
+                    <tr>
+                        <th>Замовлення</th>
+                        <th>Клієнт</th>
+                        <th>Сума</th>
+                        <th>Статус</th>
+                        <th style="text-align: right;">Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>
+                            <strong style="color: var(--dark);">#{{ order.id }}</strong><br>
+                            <span style="font-size: 12px; color: var(--gray-3);">{{ order.created_at|date:"d.m.Y H:i" }}</span>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: var(--dark);">{{ order.first_name }} {{ order.last_name }}</div>
+                            <span style="font-size: 12px; color: var(--gray-3);">{{ order.number }}</span>
+                        </td>
+                        <td>
+                            <strong style="color: var(--dark); font-size: 15px;">{{ order.vendor_total|floatformat:0 }} ₴</strong>
+                        </td>
+                        <td>
+                            <span class="status-badge 
+                                {% if order.status == 'new' %}status-new
+                                {% elif order.status == 'processing' %}status-processing
+                                {% elif order.status == 'shipped' %}status-shipped
+                                {% elif order.status == 'completed' %}status-completed
+                                {% elif order.status == 'cancelled' %}status-cancelled
+                                {% endif %}
+                            ">{{ order.get_status_display }}</span>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <!-- Заміни '#' на свій URL для перегляду деталей -->
+                                <a href="{% url 'vendor_order_details' order.pk %}" class="btn-icon btn-view" title="Переглянути деталі">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-vendor">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="64" height="64" stroke-width="1.5" style="margin-bottom: 16px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <h3 style="color: var(--dark); margin-bottom: 8px;">Замовлень не знайдено</h3>
+            <p>За обраними фільтрами у вас ще немає продажів.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

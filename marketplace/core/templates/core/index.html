@@ -1,0 +1,582 @@
+{% extends "core/base.html" %}
+
+{% block title %}Marketplace — Найбільший інтернет-магазин України{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── HERO BANNER ── */
+    .hero {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a3a2a 100%);
+        border-radius: var(--radius);
+        padding: 48px 56px;
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 32px;
+        overflow: hidden;
+        position: relative;
+    }
+    .hero::before {
+        content: '';
+        position: absolute;
+        width: 420px; height: 420px;
+        background: radial-gradient(circle, rgba(0,160,70,.25) 0%, transparent 70%);
+        right: -60px; top: -100px;
+        pointer-events: none;
+    }
+    .hero::after {
+        content: '';
+        position: absolute;
+        width: 260px; height: 260px;
+        background: radial-gradient(circle, rgba(0,160,70,.15) 0%, transparent 70%);
+        left: 30%; bottom: -80px;
+        pointer-events: none;
+    }
+    .hero-text { position: relative; z-index: 1; }
+    .hero-label {
+        display: inline-block;
+        background: var(--green);
+        color: var(--white);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+    }
+    .hero h1 {
+        font-size: 42px;
+        font-weight: 800;
+        color: var(--white);
+        line-height: 1.15;
+        margin-bottom: 12px;
+        max-width: 480px;
+    }
+    .hero h1 span { color: var(--green); }
+    .hero-sub {
+        font-size: 16px;
+        color: #aaa;
+        margin-bottom: 28px;
+        max-width: 400px;
+        line-height: 1.6;
+    }
+    .hero-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--green);
+        color: var(--white);
+        font-weight: 700;
+        font-size: 15px;
+        padding: 14px 28px;
+        border-radius: 8px;
+        transition: background .2s, transform .15s;
+    }
+    .hero-cta:hover { background: var(--green-dark); transform: translateY(-2px); }
+    .hero-cta svg { width: 18px; height: 18px; }
+
+    .hero-stats {
+        display: flex;
+        gap: 28px;
+        margin-top: 28px;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat-num { font-size: 24px; font-weight: 800; color: var(--white); }
+    .hero-stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+
+    .hero-illustration {
+        position: relative;
+        z-index: 1;
+        flex-shrink: 0;
+        width: 280px;
+        height: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .hero-circle {
+        width: 200px; height: 200px;
+        border-radius: 50%;
+        background: rgba(0,160,70,.12);
+        border: 2px solid rgba(0,160,70,.3);
+        display: flex; align-items: center; justify-content: center;
+        animation: pulse 3s ease-in-out infinite;
+    }
+    .hero-circle svg { width: 80px; height: 80px; color: var(--green); }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,160,70,.2); }
+        50% { transform: scale(1.04); box-shadow: 0 0 0 20px rgba(0,160,70,0); }
+    }
+
+    /* ── PROMO STRIP ── */
+    .promo-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+    .promo-card {
+        border-radius: var(--radius);
+        padding: 20px 22px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        cursor: pointer;
+        transition: transform .2s, box-shadow .2s;
+    }
+    .promo-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+    .promo-card.green  { background: linear-gradient(120deg, #00a046, #00c458); }
+    .promo-card.dark   { background: linear-gradient(120deg, #1a1a1a, #333); }
+    .promo-card.orange { background: linear-gradient(120deg, #e07b00, #f5a623); }
+    .promo-icon {
+        width: 48px; height: 48px; flex-shrink: 0;
+        background: rgba(255,255,255,.15);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .promo-icon svg { width: 24px; height: 24px; color: var(--white); }
+    .promo-text-wrap {}
+    .promo-title { font-size: 15px; font-weight: 700; color: var(--white); }
+    .promo-desc  { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 2px; }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .section-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .section-title::before {
+        content: '';
+        display: inline-block;
+        width: 4px; height: 24px;
+        background: var(--green);
+        border-radius: 2px;
+    }
+    .section-link {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--green);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        transition: gap .2s;
+    }
+    .section-link:hover { gap: 8px; }
+
+    /* ── CATEGORIES GRID ── */
+    .categories-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 12px;
+        margin-bottom: 36px;
+    }
+    .cat-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: box-shadow .2s, transform .2s, border-color .2s;
+        border: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    .cat-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-3px);
+        border-color: var(--green);
+    }
+    .cat-icon {
+        width: 52px; height: 52px;
+        background: var(--green-light);
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .cat-icon svg { width: 26px; height: 26px; color: var(--green); }
+    .cat-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--dark);
+        line-height: 1.3;
+    }
+
+    /* ── PRODUCTS SCROLL ── */
+    .products-scroll {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 14px;
+        margin-bottom: 36px;
+    }
+
+    /* Product card */
+    .product-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow .2s, transform .2s;
+        position: relative;
+        text-decoration: none;
+        color: inherit;
+    }
+    .product-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+
+    .card-badge {
+        position: absolute; top: 10px; left: 10px;
+        background: var(--green);
+        color: var(--white); font-size: 10px; font-weight: 700;
+        padding: 3px 8px; border-radius: 4px; z-index: 2;
+        text-transform: uppercase; letter-spacing: .4px;
+    }
+    .card-wishlist {
+        position: absolute; top: 8px; right: 8px;
+        background: var(--white); border: none; border-radius: 50%;
+        width: 30px; height: 30px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; box-shadow: 0 1px 6px rgba(0,0,0,.12);
+        color: var(--gray-3); transition: color .2s, transform .2s; z-index: 10;
+    }
+    .card-wishlist:hover { color: var(--red); transform: scale(1.12); }
+    .card-wishlist svg { width: 14px; height: 14px; }
+
+    .card-img {
+        width: 100%; aspect-ratio: 1;
+        background: var(--gray-5);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+        border-bottom: 1px solid var(--gray-4);
+    }
+    .card-img svg { width: 64px; height: 64px; color: var(--gray-3); }
+
+    .card-body { padding: 12px; display: flex; flex-direction: column; flex: 1; gap: 6px; }
+
+    .card-category { font-size: 10px; color: var(--green); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+    .card-name {
+        font-size: 13px; font-weight: 600; color: var(--dark); line-height: 1.4;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: auto; padding-top: 8px; border-top: 1px solid var(--gray-4);
+    }
+    .card-price { font-size: 17px; font-weight: 800; color: var(--dark); }
+    .card-price span { font-size: 12px; font-weight: 500; color: var(--gray-2); }
+
+    .btn-cart {
+        background: var(--green); color: var(--white);
+        border: none; border-radius: 6px; padding: 7px 12px;
+        font-family: var(--font); font-size: 12px; font-weight: 700;
+        cursor: pointer; transition: background .2s;
+        display: flex; align-items: center; gap: 4px;
+        position: relative; z-index: 5;
+    }
+    .btn-cart:hover { background: var(--green-dark); }
+    .btn-cart svg { width: 13px; height: 13px; }
+
+    /* ── FEATURES BAR ── */
+    .features-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 36px;
+    }
+    .feature-item {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .feature-icon {
+        width: 44px; height: 44px; flex-shrink: 0;
+        background: var(--green-light);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .feature-icon svg { width: 22px; height: 22px; color: var(--green); }
+    .feature-title { font-size: 13px; font-weight: 700; color: var(--dark); }
+    .feature-desc { font-size: 11px; color: var(--gray-2); margin-top: 2px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+        .hero { padding: 32px 28px; }
+        .hero h1 { font-size: 28px; }
+        .hero-illustration { display: none; }
+        .promo-strip { grid-template-columns: 1fr; }
+        .features-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+        .hero h1 { font-size: 22px; }
+        .hero-stats { gap: 16px; }
+        .categories-grid { grid-template-columns: repeat(3, 1fr); }
+        .products-scroll { grid-template-columns: repeat(2, 1fr); }
+        .features-bar { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── HERO ── -->
+<div class="hero">
+    <div class="hero-text">
+        <span class="hero-label">🔥 Найкращі ціни</span>
+        <h1>Мільйони товарів для <span>вашого</span> життя</h1>
+        <p class="hero-sub">Електроніка, побутова техніка, одяг, книги та багато іншого — з доставкою по всій Україні</p>
+        <a href="/catalog/" class="hero-cta">
+            Перейти до каталогу
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </a>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-num">5M+</div>
+                <div class="hero-stat-label">Товарів</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">24/7</div>
+                <div class="hero-stat-label">Підтримка</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num">1 день</div>
+                <div class="hero-stat-label">Доставка</div>
+            </div>
+        </div>
+    </div>
+    <div class="hero-illustration">
+        <div class="hero-circle">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<!-- ── PROMO STRIP ── -->
+<div class="promo-strip">
+    <div class="promo-card green">
+        <div class="promo-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+        </div>
+        <div class="promo-text-wrap">
+            <div class="promo-title">Розпродаж</div>
+            <div class="promo-desc">Знижки до −70% на топ товари</div>
+        </div>
+    </div>
+    <div class="promo-card dark">
+        <div class="promo-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="1" y="3" width="15" height="13" rx="2"/>
+                <path d="M16 8h5l2 4v3h-7V8z"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+        </div>
+        <div class="promo-text-wrap">
+            <div class="promo-title">Швидка доставка</div>
+            <div class="promo-desc">Отримайте замовлення вже завтра</div>
+        </div>
+    </div>
+    <div class="promo-card orange">
+        <div class="promo-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+        </div>
+        <div class="promo-text-wrap">
+            <div class="promo-title">Топ новинки</div>
+            <div class="promo-desc">Перші серед нових надходжень</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── CATEGORIES ── -->
+<div class="section-header">
+    <h2 class="section-title">Категорії</h2>
+    <a href="/catalog/" class="section-link">Всі категорії →</a>
+</div>
+
+<div class="categories-grid">
+    {% for category in categories %}
+        {% if not category.parent %}
+            <a href="/catalog/?category={{ category.id }}" class="cat-card" style="text-decoration:none;">
+                <div class="cat-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                </div>
+                <div class="cat-name">{{ category.name }}</div>
+            </a>
+        {% endif %}
+    {% empty %}
+        <p style="color:var(--gray-2); font-size:14px; grid-column:1/-1;">Категорії відсутні</p>
+    {% endfor %}
+</div>
+
+<!-- ── FEATURES ── -->
+<div class="features-bar">
+    <div class="feature-item">
+        <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="1" y="3" width="15" height="13" rx="2"/>
+                <path d="M16 8h5l2 4v3h-7V8z"/>
+                <circle cx="5.5" cy="18.5" r="2.5"/>
+                <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+        </div>
+        <div>
+            <div class="feature-title">Безкоштовна доставка</div>
+            <div class="feature-desc">При замовленні від 1000 грн</div>
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M9 14l-4-4 4-4M5 10h14M15 10l4 4-4 4"/>
+            </svg>
+        </div>
+        <div>
+            <div class="feature-title">Легке повернення</div>
+            <div class="feature-desc">Протягом 14 днів без питань</div>
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="feature-title">Гарантія якості</div>
+            <div class="feature-desc">Тільки оригінальні товари</div>
+        </div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7a2 2 0 0 1 1.72 2.04z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="feature-title">Підтримка 24/7</div>
+            <div class="feature-desc">0 800 303 303 — безкоштовно</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── NEW PRODUCTS ── -->
+<div class="section-header">
+    <h2 class="section-title">Новинки</h2>
+    <a href="/catalog/" class="section-link">Всі товари →</a>
+</div>
+
+<div class="products-scroll">
+    {% for product in products %}
+    <a href="{% url 'product_detail' pk=product.pk %}" class="product-card" style="text-decoration: none; color: inherit;">
+        
+        <!-- БЕЙДЖИКИ -->
+        {% if product.is_discounted %}
+            <span class="card-badge" style="background: var(--orange);">-{{ product.active_discount.value }}%</span>
+        {% elif not product.is_available %}
+            <span class="card-badge" style="background: var(--red);">Немає</span>
+        {% else %}
+            <span class="card-badge new">Новинка</span>
+        {% endif %}
+
+        <button class="card-wishlist fav-btn {% if product.id in user_favorite_ids %}active{% endif %}" 
+                data-url="{% url 'toggle_favorite' product.id %}" 
+                title="Додати до обраного">
+
+            <svg fill="{% if product.id in user_favorite_ids %}var(--red){% else %}none{% endif %}" 
+                stroke="{% if product.id in user_favorite_ids %}var(--red){% else %}currentColor{% endif %}" 
+                viewBox="0 0 24 24">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+        </button>
+
+        <div class="card-img">
+            {% if product.images.first %}
+                <img src="{{ product.images.first.image_url }}" alt="{{ product.name }}" style="max-width:100%; max-height:100%; object-fit:contain;">
+            {% else %}
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="21" x2="9" y2="9"/>
+                </svg>
+            {% endif %}
+        </div>
+
+        <div class="card-body">
+            <div class="card-category">{{ product.category }}</div>
+            <div class="card-name">{{ product.name }}</div>
+            
+            <div class="card-footer">
+                <div class="card-price">
+                    <!-- ЦІНА ЗІ ЗНИЖКОЮ -->
+                    {% if product.is_discounted %}
+                        <div style="font-size: 11px; text-decoration: line-through; color: var(--gray-3); font-weight: 500; line-height: 1; margin-bottom: 2px;">
+                            {{ product.price|floatformat:0 }} ₴
+                        </div>
+                        <div style="color: var(--red); line-height: 1;">
+                            {{ product.get_current_price|floatformat:0 }} <span>грн</span>
+                        </div>
+                    {% else %}
+                        <div>
+                            {{ product.price|floatformat:0 }} <span>грн</span>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- КНОПКА ДОДАВАННЯ У КОШИК -->
+                {% if product.is_available %}
+                    <form action="{% url 'cart_add' pk=product.pk %}" method="post" style="margin: 0;">
+                        {% csrf_token %}
+                        <!-- JS-хак, щоб клік по кнопці не перекидав на сторінку товару -->
+                        <button type="submit" class="btn-cart" onclick="event.preventDefault(); event.stopPropagation(); this.closest('form').submit();">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <path d="M16 10a4 4 0 0 1-8 0"/>
+                            </svg>
+                            Купити
+                        </button>
+                    </form>
+                {% else %}
+                    <span style="font-size: 11px; color: var(--gray-3); font-weight: 500;">Немає</span>
+                {% endif %}
+            </div>
+        </div>
+    </a>
+    {% empty %}
+        <p style="color:var(--gray-2); font-size:14px; grid-column:1/-1; padding: 20px 0;">
+            Товарів поки немає
+        </p>
+    {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "core/base.html" %}
+
+{% block title %}Замовлення №{{ order.id }} оформлено — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-container {
+        max-width: 700px;
+        margin: 40px auto;
+        text-align: center;
+    }
+
+    .success-icon {
+        width: 80px;
+        height: 80px;
+        background: var(--green-light);
+        color: var(--green);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+    }
+    .success-icon svg { width: 44px; height: 44px; }
+
+    .success-title { font-size: 28px; font-weight: 800; color: var(--dark); margin-bottom: 12px; }
+    .success-sub { font-size: 16px; color: var(--gray-2); margin-bottom: 32px; }
+
+    /* Картка замовлення */
+    .order-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 32px;
+        text-align: left;
+        margin-bottom: 24px;
+    }
+
+    .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--gray-4);
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+    }
+    .order-number { font-size: 18px; font-weight: 800; color: var(--dark); }
+    .order-date { font-size: 14px; color: var(--gray-2); }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .detail-item { margin-bottom: 16px; }
+    .detail-label { font-size: 12px; font-weight: 700; color: var(--gray-3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .detail-value { font-size: 15px; color: var(--dark); font-weight: 600; }
+
+    .order-items-mini {
+        background: var(--gray-5);
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 20px;
+    }
+    .mini-item { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+    .mini-item:last-child { margin-bottom: 0; }
+    .mini-item-name { color: var(--gray-1); }
+    .mini-item-price { font-weight: 700; }
+
+    .order-total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 2px solid var(--gray-4);
+    }
+    .total-label { font-size: 18px; font-weight: 700; }
+    .total-value { font-size: 24px; font-weight: 800; color: var(--green); }
+
+    /* Кнопки */
+    .actions { display: flex; flex-direction: column; gap: 12px; }
+    
+    .btn-liqpay {
+        background: #333333;
+        color: white;
+        border: none;
+        padding: 18px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        transition: background 0.2s, transform 0.1s;
+        width: 100%;
+        text-decoration: none;
+    }
+    .btn-liqpay:hover { background: #000; }
+    .btn-liqpay:active { transform: scale(0.98); }
+    .btn-liqpay svg { width: 24px; height: 24px; }
+
+    .btn-outline {
+        display: block;
+        padding: 14px;
+        border: 1.5px solid var(--gray-4);
+        border-radius: 8px;
+        color: var(--gray-1);
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+
+    .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+        .detail-grid { grid-template-columns: 1fr; gap: 12px; }
+        .btn-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    
+    <div class="success-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+    </div>
+
+    <h1 class="success-title">Замовлення успішно оформлено!</h1>
+    <p class="success-sub">Дякуємо за покупку. Ми вже передали ваше замовлення в обробку.</p>
+
+    <div class="order-card">
+        <div class="order-header">
+            <span class="order-number">Замовлення №{{ order.id }}</span>
+            <span class="order-date">{{ order.created_at|date:"d.m.Y H:i" }}</span>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="detail-label">Одержувач</div>
+                <div class="detail-value">{{ order.last_name }} {{ order.first_name }}</div>
+                <div class="detail-value" style="font-weight: normal; font-size: 14px; color: var(--gray-2);">{{ order.number }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Спосіб оплати</div>
+                <div class="detail-value">{{ order.get_payment_method_display }}</div>
+                <div class="detail-value" style="color: {% if order.payment_status == 'paid' %}var(--green){% else %}var(--orange){% endif %}; font-size: 13px;">
+                    ● {{ order.get_payment_status_display }}
+                </div>
+            </div>
+            <div class="detail-item" style="grid-column: 1 / -1;">
+                <div class="detail-label">Доставка</div>
+                <div class="detail-value">{{ order.get_delivery_method_display }}</div>
+                <div class="detail-value" style="font-weight: normal; font-size: 14px; color: var(--gray-2);">
+                    м. {{ order.city }}, {{ order.address }}
+                </div>
+            </div>
+        </div>
+
+        <div class="order-items-mini">
+            {% for item in order.items.all %}
+                <div class="mini-item">
+                    <span class="mini-item-name">{{ item.name }} ({{ item.quantity }} шт.)</span>
+                    <span class="mini-item-price">{{ item.total|floatformat:0 }} ₴</span>
+                </div>
+            {% endfor %}
+            {% if order.postpaid_fee > 0 %}
+                <div class="mini-item" style="color: var(--gray-2); border-top: 1px solid var(--gray-4); padding-top: 8px; margin-top: 8px;">
+                    <span>Комісія за післяплату</span>
+                    <span>{{ order.postpaid_fee|floatformat:0 }} ₴</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="order-total-row">
+            <span class="total-label">Разом до сплати:</span>
+            <span class="total-value">{{ order.total_amount|floatformat:0 }} ₴</span>
+        </div>
+    </div>
+
+    <div class="actions">
+        {% if liqpay_data and liqpay_signature %}
+            <form method="POST" action="https://www.liqpay.ua/api/3/checkout" accept-charset="utf-8">
+                <input type="hidden" name="data" value="{{ liqpay_data }}" />
+                <input type="hidden" name="signature" value="{{ liqpay_signature }}" />
+                
+                <button type="submit" class="btn-liqpay">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                    </svg>
+                    Оплатити карткою зараз
+                </button>
+            </form>
+            <p style="font-size: 12px; color: var(--gray-2); margin-top: -8px; margin-bottom: 8px;">Безпечна оплата через LiqPay</p>
+        {% endif %}
+
+        <div class="btn-row">
+            <a href="{% url 'catalog' %}" class="btn-outline">Повернутися до покупок</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="btn-outline">Мої замовлення</a>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

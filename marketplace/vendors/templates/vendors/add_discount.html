@@ -1,0 +1,172 @@
+{% extends "core/base.html" %}
+
+{% block title %}Додати знижку для {{ product.name }} — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vendor-wrapper { display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start; margin-top: 20px; margin-bottom: 40px; }
+    @media (max-width: 860px) { .vendor-wrapper { grid-template-columns: 1fr; } }
+    
+    /* ── САЙДБАР ПРОДАВЦЯ ── */
+    .vendor-sidebar { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 0; }
+    .vendor-sidebar-title { font-size: 13px; font-weight: 700; color: var(--gray-2); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 20px 12px; border-bottom: 1px solid var(--gray-4); margin-bottom: 8px; }
+    .vendor-nav { list-style: none; }
+    .vendor-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--dark); text-decoration: none; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
+    .vendor-nav li a:hover, .vendor-nav li a.active { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
+    .vendor-nav svg { width: 20px; height: 20px; color: currentColor; }
+    
+    /* ── ОСНОВНИЙ КОНТЕНТ ── */
+    .vendor-content { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; }
+    .vendor-content-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--gray-4); gap: 16px; flex-wrap: wrap; }
+    .vendor-content-header h1 { font-size: 24px; font-weight: 800; color: var(--dark); margin: 0; line-height: 1.3; }
+    .vendor-content-header .product-name { font-size: 15px; color: var(--green); font-weight: 600; display: block; margin-top: 4px; }
+    
+    .btn-back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--gray-2); text-decoration: none; transition: color 0.2s; white-space: nowrap; }
+    .btn-back:hover { color: var(--dark); }
+
+    /* ── СТИЛІ ФОРМИ ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    
+    .form-group { margin-bottom: 16px; }
+    /* Поле знижки робимо на всю ширину для акценту */
+    .form-group.full-width { grid-column: 1 / -1; }
+    
+    .vendor-content label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-1); margin-bottom: 6px; }
+    .vendor-content input[type="text"],
+    .vendor-content input[type="number"],
+    .vendor-content input[type="datetime-local"],
+    .vendor-content select {
+        width: 100%; padding: 12px 16px; border: 1px solid var(--gray-3); border-radius: var(--radius);
+        font-size: 14px; font-family: var(--font); transition: border-color 0.2s, box-shadow 0.2s; background: var(--white);
+    }
+    .vendor-content input:focus, .vendor-content select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-light); }
+    
+    .errorlist { color: var(--red); font-size: 12px; list-style: none; padding: 0; margin: 6px 0 0 0; }
+    .non-field-errors { background-color: #ffebee; color: #c62828; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--red); font-size: 14px; }
+
+    .btn-save { background: var(--green); color: var(--white); border: none; padding: 14px 32px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: background 0.2s, transform 0.15s; font-family: var(--font); margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-save:hover { background: var(--green-dark); transform: translateY(-1px); }
+
+    /* ── АДАПТИВНІСТЬ ПРОДАВЦЯ (ТЕЛЕФОНИ) ── */
+    @media (max-width: 600px) {
+        .vendor-wrapper { margin-top: 10px; gap: 16px; }
+        .vendor-sidebar { border-radius: 8px; }
+        .vendor-content { padding: 20px 16px; }
+        .vendor-content h1, .vendor-header h1 { font-size: 20px; margin-bottom: 16px; }
+        
+        /* vendor.html: Кнопка додавання на всю ширину */
+        .vendor-header { flex-direction: column; align-items: stretch; gap: 12px; }
+        .btn-add { width: 100%; justify-content: center; }
+        
+        /* create_product / edit_product: Характеристики в стовпчик */
+        .property-row { flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 1px dashed var(--gray-4); }
+        .property-row input { flex: 1 1 100%; }
+        .btn-remove-prop { width: 100%; height: 36px; margin-top: 4px; }
+        .btn-save { width: 100%; justify-content: center; }
+        
+        /* order_detail.html: Картки клієнта та доставки */
+        .info-grid { grid-template-columns: 1fr; gap: 16px; }
+        .info-card { padding: 16px; }
+        .status-form { flex-direction: column; align-items: stretch; gap: 10px; }
+        .total-card { padding: 16px; width: 100%; text-align: center; }
+        .order-total-box { justify-content: center; }
+        .items-table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb" style="margin-bottom:16px;">
+    <a href="/">Головна</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'vendor_view' %}">Кабінет продавця</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Додати знижку</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="vendor-wrapper">
+    
+    <!-- САЙДБАР -->
+    <aside class="vendor-sidebar">
+        <div class="vendor-sidebar-title">Seller Hub</div>
+        <ul class="vendor-nav">
+            <li>
+                <a href="{% url 'vendor_view' %}" class="active">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    Мої товари
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'create_product' %}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Додати товар
+                </a>
+            </li>
+            <li style="margin-top: 16px; border-top: 1px solid var(--gray-4); padding-top: 8px;">
+                <a href="{% url 'profile' %}" style="color: var(--gray-2);">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Повернутись у профіль
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- КОНТЕНТ -->
+    <div class="vendor-content">
+        <div class="vendor-content-header">
+            <div>
+                <h1>Налаштування знижки</h1>
+                <span class="product-name">Товар: {{ product.name }}</span>
+            </div>
+            <a href="{% url 'vendor_view' %}" class="btn-back">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Назад до товарів
+            </a>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="non-field-errors">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="form-grid">
+                <!-- Розкладаємо поля вручну, щоб задати правильну ширину -->
+                <div class="form-group full-width">
+                    <label for="{{ form.value.id_for_label }}">Розмір знижки (%)</label>
+                    {{ form.value }}
+                    {% if form.value.errors %}
+                        <ul class="errorlist">{% for error in form.value.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                    {% endif %}
+                    <span style="font-size: 12px; color: var(--gray-2); margin-top: 4px; display: block;">Вкажіть відсоток знижки, наприклад: 15</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.start_at.id_for_label }}">Початок дії знижки</label>
+                    {{ form.start_at }}
+                    {% if form.start_at.errors %}
+                        <ul class="errorlist">{% for error in form.start_at.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.end_at.id_for_label }}">Кінець дії знижки</label>
+                    {{ form.end_at }}
+                    {% if form.end_at.errors %}
+                        <ul class="errorlist">{% for error in form.end_at.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>
+                Зберегти знижку
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

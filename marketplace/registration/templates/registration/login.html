@@ -1,0 +1,150 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Вхід — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 60vh;
+        padding: 40px 20px;
+    }
+    .auth-card {
+        background: var(--white);
+        padding: 40px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        width: 100%;
+        max-width: 440px;
+    }
+    .auth-card h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 24px;
+        text-align: center;
+        color: var(--dark);
+    }
+    
+    .auth-card p {
+        margin-bottom: 16px;
+    }
+    .auth-card label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--gray-1);
+        margin-bottom: 6px;
+    }
+    .auth-card input[type="text"],
+    .auth-card input[type="password"],
+    .auth-card input[type="tel"] {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--gray-3);
+        border-radius: var(--radius);
+        font-size: 15px;
+        font-family: var(--font);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .auth-card input:focus {
+        outline: none;
+        border-color: var(--green);
+        box-shadow: 0 0 0 3px var(--green-light);
+    }
+    .auth-card .errorlist {
+        color: var(--red);
+        font-size: 12px;
+        list-style: none;
+        padding: 0;
+        margin: 4px 0 0 0;
+    }
+    .non-field-errors {
+        background-color: #ffebee;
+        color: #c62828;
+        padding: 10px 14px;
+        border-radius: var(--radius);
+        margin-bottom: 16px;
+        font-size: 13px;
+        border: 1px solid var(--red);
+    }
+    .auth-btn {
+        width: 100%;
+        background: var(--green);
+        color: var(--white);
+        border: none;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: var(--radius);
+        cursor: pointer;
+        margin-top: 12px;
+        transition: background 0.2s;
+        font-family: var(--font);
+    }
+    .auth-btn:hover {
+        background: var(--green-dark);
+    }
+    .auth-links {
+        margin-top: 24px;
+        text-align: center;
+        font-size: 14px;
+        color: var(--gray-2);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .auth-links a {
+        color: var(--green);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .auth-links a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+        .auth-wrapper {
+            padding: 20px 16px;
+            min-height: calc(100vh - 200px); /* Учитываем высоту шапки и футера */
+        }
+        .auth-card {
+            padding: 24px 20px;
+        }
+        .auth-card h1 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h1>Вхід</h1>
+        
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="non-field-errors">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Стандартна Django AuthenticationForm має поля username і password. -->
+            <!-- Оскільки у вас USERNAME_FIELD = "number", сюди буде вводитись номер. -->
+            {{ form.as_p }}
+            
+            <button type="submit" class="auth-btn">Увійти</button>
+        </form>
+
+        <div class="auth-links">
+            <!-- <a href="#">Забули пароль?</a> (розкоментуйте, якщо є скидання пароля) -->
+            <span>Немає акаунту? <a href="{% url 'register' %}">Зареєструватись</a></span>
+        </div>
+    </div>
+</div>
+{% endblock %}

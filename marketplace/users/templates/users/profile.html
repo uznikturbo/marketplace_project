@@ -1,0 +1,535 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Особистий кабінет — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── СІТКА ПРОФІЛЮ ── */
+    .profile-wrapper {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 24px;
+        align-items: start;
+        margin-top: 20px;
+        margin-bottom: 40px;
+    }
+
+    /* Мобільна адаптація */
+    @media (max-width: 768px) {
+        .profile-wrapper {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ── БОКОВЕ МЕНЮ (САЙДБАР) ── */
+    .profile-sidebar {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .profile-user-info {
+        padding: 24px 20px;
+        border-bottom: 1px solid var(--gray-4);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .profile-avatar {
+        width: 56px;
+        height: 56px;
+        background: var(--green-light);
+        color: var(--green-dark);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .profile-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 4px;
+    }
+    .profile-phone {
+        font-size: 13px;
+        color: var(--gray-2);
+    }
+    .profile-nav {
+        list-style: none;
+        padding: 12px 0;
+    }
+    .profile-nav li a, .profile-nav li button {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--dark);
+        text-decoration: none;
+        transition: background 0.2s, color 0.2s;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+    }
+    .profile-nav li a:hover, .profile-nav li button:hover {
+        background: var(--gray-5);
+        color: var(--green);
+    }
+    .profile-nav li a.active {
+        background: var(--green-light);
+        color: var(--green-dark);
+        border-left: 3px solid var(--green);
+        padding-left: 17px;
+    }
+    .profile-nav svg {
+        width: 20px;
+        height: 20px;
+        color: var(--gray-3);
+        transition: color 0.2s;
+    }
+    .profile-nav li a:hover svg, .profile-nav li a.active svg {
+        color: var(--green);
+    }
+
+    /* ── ОСНОВНИЙ КОНТЕНТ ПРОФІЛЮ ── */
+    .profile-content {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 32px;
+    }
+    .profile-content h1 {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 24px;
+    }
+
+    /* Форма редагування */
+    .profile-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    @media (max-width: 576px) {
+        .profile-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .form-group {
+        margin-bottom: 16px;
+    }
+    /* Якщо хочемо, щоб поле займало всю ширину */
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    .profile-content label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--gray-1);
+        margin-bottom: 6px;
+    }
+    .profile-content input[type="text"],
+    .profile-content input[type="email"],
+    .profile-content input[type="tel"] {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--gray-3);
+        border-radius: var(--radius);
+        font-size: 15px;
+        font-family: var(--font);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .profile-content input:focus {
+        outline: none;
+        border-color: var(--green);
+        box-shadow: 0 0 0 3px var(--green-light);
+    }
+    .profile-content .errorlist {
+        color: var(--red);
+        font-size: 12px;
+        list-style: none;
+        padding: 0;
+        margin: 6px 0 0 0;
+    }
+    .btn-save {
+        background: var(--green);
+        color: var(--white);
+        border: none;
+        padding: 14px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: background 0.2s;
+        font-family: var(--font);
+        margin-top: 10px;
+    }
+    .btn-save:hover {
+        background: var(--green-dark);
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .status-confirmed { background: var(--green-light); color: var(--green-dark); }
+    .status-unconfirmed { background: #ffebee; color: #c62828; }
+
+    /* ── ВІДЖЕТ ПІДТВЕРДЖЕННЯ НОМЕРУ ── */
+    .verification-box {
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .verification-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .verification-text {
+        font-size: 14px;
+        font-weight: 500;
+        color: #b78103;
+    }
+    .btn-trigger-sms, .btn-submit-code {
+        background: #ffb300;
+        color: var(--dark);
+        border: none;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 700;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-family: inherit;
+    }
+    .btn-trigger-sms:hover, .btn-submit-code:hover {
+        background: #ffa000;
+    }
+    .btn-trigger-sms:disabled {
+        background: var(--gray-4);
+        color: var(--gray-2);
+        cursor: not-allowed;
+    }
+    .code-input-container {
+        display: none; /* Спочатку сховано, показуємо через JS */
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 1px dashed #ffe082;
+    }
+    .input-sms-code {
+        width: 120px !important;
+        padding: 8px 12px !important;
+        text-align: center;
+        font-letter-spacing: 4px;
+        font-weight: 700;
+    }
+    .sms-error-msg {
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 4px;
+        display: none;
+    }
+
+    /* ── АДАПТИВНІСТЬ КАБІНЕТУ (ТЕЛЕФОНИ) ── */
+    @media (max-width: 600px) {
+        .profile-wrapper { margin-top: 10px; gap: 16px; }
+        .profile-sidebar { border-radius: 8px; }
+        .profile-content { padding: 20px 16px; }
+        .profile-content h1 { font-size: 20px; margin-bottom: 16px; }
+        
+        /* Специфічно для orders.html */
+        .order-header { padding: 12px; flex-direction: column; align-items: flex-start; gap: 8px; }
+        .order-header-left { gap: 8px; }
+        .order-items-table { display: block; overflow-x: auto; white-space: nowrap; }
+        .order-summary-row { gap: 12px; }
+        
+        /* Специфічно для profile.html */
+        .verification-header { flex-direction: column; align-items: stretch; text-align: center; }
+        .input-sms-code { width: 100% !important; }
+        .code-input-container { flex-direction: column; align-items: stretch; }
+        
+        /* Специфічно для wishlist.html */
+        .wishlist-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .wish-img { padding: 10px; }
+        .wish-img svg { width: 40px; height: 40px; }
+        .wish-body { padding: 10px; }
+        .wish-name { font-size: 12px; }
+        .wish-price { font-size: 16px; }
+        .btn-cart { width: 100%; justify-content: center; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="/">Головна</a>
+    <span class="breadcrumb-sep">&rsaquo;</span>
+    <span>Особистий кабінет</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="profile-wrapper">
+    
+    <!-- САЙДБАР -->
+    <aside class="profile-sidebar">
+        <div class="profile-user-info">
+            <!-- Виводимо першу літеру імені або номеру -->
+            <div class="profile-avatar">
+                {% if user.first_name %}
+                    {{ user.first_name|first|upper }}
+                {% else %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                {% endif %}
+            </div>
+            <div>
+                <div class="profile-name">
+                    {% if user.first_name or user.last_name %}
+                        {{ user.first_name }} {{ user.last_name }}
+                    {% else %}
+                        Користувач
+                    {% endif %}
+                </div>
+                <div class="profile-phone">{{ user.number }}</div>
+            </div>
+        </div>
+        
+        <ul class="profile-nav">
+            <li>
+                <a href="#" class="active">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Особисті дані
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'profile_orders' %}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    Мої замовлення
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'profile_wishlist' %}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    Список бажань
+                </a>
+            </li>
+            {% if user.is_vendor %}
+            <li>
+                <a href="{% url 'vendor_view' %}">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM12 8v8m-4-4h8"/></svg>
+                    Кабінет продавця
+                </a>
+            </li>
+            {% endif %}
+            <li style="border-top: 1px solid var(--gray-4); margin-top: 8px; padding-top: 8px;">
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Вийти з акаунта
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </aside>
+
+    <section class="profile-content">
+        <h1>Особисті дані</h1>
+
+        <!-- Статус акаунту (Confirmed або ні) -->
+        {% if user.confirmed %}
+            <div class="status-badge status-confirmed">✓ Номер підтверджено</div>
+        {% else %}
+            <div id="verification-section" class="verification-box">
+                <div class="verification-header">
+                    <span class="verification-text">⚠ Ваш номер телефону не підтверджено. Підтвердіть його, щоб отримати повний доступ до маркетплейсу.</span>
+                    <button type="button" id="btn-send-sms" class="btn-trigger-sms">Підтвердити номер</button>
+                </div>
+                
+                <!-- Контейнер для введення коду (активується через JS) -->
+                <div id="code-entry-zone" class="code-input-container">
+                    <div>
+                        <label for="sms_code">Введіть код з SMS:</label>
+                        <input type="text" id="sms_code" class="input-sms-code" placeholder="0000" maxlength="6" autocomplete="off">
+                        <div id="sms-error" class="sms-error-msg"></div>
+                    </div>
+                    <button type="button" id="btn-verify-code" class="btn-submit-code" style="margin-top: 18px;">Відправити код</button>
+                </div>
+            </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <div class="profile-form-grid">
+                {% for field in form %}
+                    <div class="form-group {% if field.name == 'email' or field.name == 'number' %}full-width{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        
+                        <!-- Виведення помилок валідації (якщо користувач ввів щось не так) -->
+                        {% if field.errors %}
+                            <ul class="errorlist">
+                                {% for error in field.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn-save">Зберегти зміни</button>
+        </form>
+
+    </section>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnSendSms = document.getElementById('btn-send-sms');
+    const btnVerifyCode = document.getElementById('btn-verify-code');
+    const codeEntryZone = document.getElementById('code-entry-zone');
+    const smsCodeInput = document.getElementById('sms_code');
+    const smsError = document.getElementById('sms-error');
+    const verificationSection = document.getElementById('verification-section');
+
+    // Отримуємо csrftoken з кук (оскільки використовуємо fetch)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    if (btnSendSms) {
+        // 1. Клік на кнопку відправки SMS
+        btnSendSms.addEventListener('click', async function() {
+            btnSendSms.disabled = true;
+            btnSendSms.innerText = 'Відправка...';
+            smsError.style.display = 'none';
+
+            try {
+                const response = await fetch("{% url 'send_verification_sms' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Показуємо поле для введення коду
+                    codeEntryZone.style.display = 'flex';
+                    btnSendSms.innerText = 'Код надіслано';
+                    // Запускаємо простий таймер на 60 сек для розблокування
+                    let countdown = 60;
+                    const timer = setInterval(() => {
+                        countdown--;
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            btnSendSms.disabled = false;
+                            btnSendSms.innerText = 'Надіслати знову';
+                        } else {
+                            btnSendSms.innerText = `Повторно через ${countdown}с`;
+                        }
+                    }, 1000);
+                } else {
+                    btnSendSms.disabled = false;
+                    btnSendSms.innerText = 'Підтвердити номер';
+                    smsError.innerText = data.error || 'Помилка при відправці';
+                    smsError.style.display = 'block';
+                    codeEntryZone.style.display = 'none';
+                }
+            } catch (err) {
+                btnSendSms.disabled = false;
+                btnSendSms.innerText = 'Підтвердити номер';
+                smsError.innerText = 'Помилка мережі. Спробуйте пізніше';
+                smsError.style.display = 'block';
+            }
+        });
+
+        // 2. Клік на кнопку перевірки введеного коду
+        btnVerifyCode.addEventListener('click', async function() {
+            const codeValue = smsCodeInput.value.trim();
+            if (!codeValue) {
+                smsError.innerText = 'Введіть код';
+                smsError.style.display = 'block';
+                return;
+            }
+            
+            smsError.style.display = 'none';
+            btnVerifyCode.disabled = true;
+
+            try {
+                const response = await fetch("{% url 'verify_sms_code' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: codeValue })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    // Якщо все супер, замінюємо жовту плашку на зелений бейдж
+                    verificationSection.outerHTML = '<div class="status-badge status-confirmed">✓ Номер успішно підтверджено!</div>';
+                } else {
+                    btnVerifyCode.disabled = false;
+                    smsError.innerText = data.error || 'Невірний код';
+                    smsError.style.display = 'block';
+                }
+            } catch (err) {
+                btnVerifyCode.disabled = false;
+                smsError.innerText = 'Помилка з\'єднання';
+                smsError.style.display = 'block';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

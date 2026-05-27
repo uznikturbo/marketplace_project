@@ -1,0 +1,329 @@
+{% extends "core/base.html" %}
+
+{% block title %}Список бажань — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wishlist-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+    .wishlist-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .wishlist-title::before {
+        content: '';
+        display: inline-block;
+        width: 4px; height: 26px;
+        background: var(--red);
+        border-radius: 2px;
+    }
+    .wishlist-count {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--gray-2);
+    }
+
+    .wishlist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 16px;
+    }
+
+    .wishlist-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        transition: box-shadow .2s, transform .2s;
+        text-decoration: none;
+        color: inherit;
+    }
+    .wishlist-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-3px);
+    }
+
+    /* Кнопка видалення з обраного */
+    .btn-remove-wish {
+        position: absolute;
+        top: 8px; right: 8px;
+        background: var(--white);
+        border: none;
+        border-radius: 50%;
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 1px 6px rgba(0,0,0,.15);
+        color: var(--red);
+        transition: transform .2s, background .2s;
+        z-index: 2;
+    }
+    .btn-remove-wish:hover {
+        transform: scale(1.15);
+        background: #fff5f5;
+    }
+    .btn-remove-wish svg { width: 16px; height: 16px; }
+
+    .wish-img {
+        aspect-ratio: 1;
+        background: var(--gray-5);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+        border-bottom: 1px solid var(--gray-4);
+    }
+    .wish-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .wish-img svg { width: 70px; height: 70px; color: var(--gray-3); }
+
+    .wish-body {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        gap: 8px;
+    }
+    .wish-category {
+        font-size: 11px;
+        color: var(--green);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+    }
+    .wish-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dark);
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .wish-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px solid var(--gray-4);
+    }
+    .wish-price {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--dark);
+    }
+    .wish-price span { font-size: 13px; font-weight: 500; color: var(--gray-2); }
+
+    .btn-cart {
+        background: var(--green); color: var(--white);
+        border: none; border-radius: 6px;
+        padding: 8px 14px;
+        font-family: var(--font); font-size: 13px; font-weight: 700;
+        cursor: pointer;
+        transition: background .2s;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .btn-cart:hover { background: var(--green-dark); }
+    .btn-cart svg { width: 14px; height: 14px; }
+
+    /* Порожній стан */
+    .empty-wishlist {
+        text-align: center;
+        padding: 80px 20px;
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+    }
+    .empty-wishlist svg {
+        width: 80px; height: 80px;
+        color: var(--gray-4);
+        margin-bottom: 20px;
+    }
+    .empty-wishlist h3 {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 10px;
+    }
+    .empty-wishlist p {
+        font-size: 14px;
+        color: var(--gray-2);
+        margin-bottom: 24px;
+    }
+    .btn-to-catalog {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--green);
+        color: var(--white);
+        padding: 12px 28px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        transition: background .2s;
+    }
+    .btn-to-catalog:hover { background: var(--green-dark); }
+
+    /* Банер для гостей */
+    .guest-banner {
+        background: linear-gradient(120deg, var(--green-light), #fff);
+        border: 1px solid var(--green);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 24px;
+        font-size: 14px;
+        color: var(--gray-1);
+    }
+    .guest-banner svg { width: 22px; height: 22px; color: var(--green); flex-shrink: 0; }
+    .guest-banner a { color: var(--green); font-weight: 700; }
+    .guest-banner a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="/">Головна</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Список бажань</span>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="wishlist-header">
+    <h1 class="wishlist-title">Список бажань</h1>
+    {% if products %}
+        <span class="wishlist-count">{{ products|length }} товар{{ products|length|pluralize:",,ів" }}</span>
+    {% endif %}
+</div>
+
+{% if not user.is_authenticated %}
+    <div class="guest-banner">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>
+            Ваш список бажань зберігається тільки в цьому браузері.
+            <a href="{% url 'login' %}">Увійдіть</a> або
+            <a href="{% url 'register' %}">зареєструйтесь</a>,
+            щоб зберегти його назавжди.
+        </span>
+    </div>
+{% endif %}
+
+{% if products %}
+    <div class="wishlist-grid">
+        {% for product in products %}
+        <div class="wishlist-card">
+
+            <!-- Кнопка видалення (серце, вже активне — клік видаляє) -->
+            <button class="btn-remove-wish fav-btn active"
+                    data-url="{% url 'toggle_favorite' product.id %}"
+                    title="Видалити з обраного">
+                <svg fill="var(--red)" stroke="var(--red)" viewBox="0 0 24 24">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+            </button>
+
+            <a href="{% url 'product_detail' pk=product.pk %}" style="text-decoration:none; color:inherit; display:contents;">
+                <div class="wish-img">
+                    {% with product.images.first as img %}
+                        {% if img %}
+                            <img src="{{ img.image_url }}" alt="{{ product.name }}">
+                        {% else %}
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="wish-body">
+                    <div class="wish-category">{{ product.category }}</div>
+                    <div class="wish-name">{{ product.name }}</div>
+
+                    <div class="wish-footer">
+                        <div class="wish-price">
+                            {% if product.is_discounted %}
+                                <div style="font-size:12px; text-decoration:line-through; color:var(--gray-3); font-weight:500;">
+                                    {{ product.price|floatformat:0 }} ₴
+                                </div>
+                                <div style="color:var(--red);">
+                                    {{ product.get_current_price|floatformat:0 }} <span>грн</span>
+                                </div>
+                            {% else %}
+                                {{ product.price|floatformat:0 }} <span>грн</span>
+                            {% endif %}
+                        </div>
+
+                        {% if product.is_available %}
+                            <form action="{% url 'cart_add' pk=product.pk %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-cart"
+                                        onclick="event.stopPropagation()">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                                        <line x1="3" y1="6" x2="21" y2="6"/>
+                                        <path d="M16 10a4 4 0 0 1-8 0"/>
+                                    </svg>
+                                    Купити
+                                </button>
+                            </form>
+                        {% else %}
+                            <span style="font-size:12px; color:var(--gray-3);">Немає в наявності</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+{% else %}
+    <div class="empty-wishlist">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <h3>Список бажань порожній</h3>
+        <p>Додавайте товари до обраного, натискаючи на серце ❤️</p>
+        <a href="{% url 'catalog' %}" class="btn-to-catalog">
+            Перейти до каталогу →
+        </a>
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Після кліку на серце — картка плавно зникає зі списку
+document.querySelectorAll('.btn-remove-wish').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const card = this.closest('.wishlist-card');
+        if (card) {
+            card.style.transition = 'opacity .3s, transform .3s';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(() => card.remove(), 300);
+        }
+    });
+});
+</script>
+{% endblock %}

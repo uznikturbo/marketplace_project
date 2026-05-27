@@ -1,0 +1,478 @@
+{% extends "core/base.html" %}
+
+{% block title %}Каталог товарів — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .catalog-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+
+    .sidebar {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        position: sticky;
+        top: 76px;
+    }
+    .sidebar-header {
+        background: var(--green);
+        color: var(--white);
+        font-size: 13px;
+        font-weight: 700;
+        padding: 14px 18px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sidebar-header svg { width: 16px; height: 16px; }
+
+    /* ── БАГАТОРІВНЕВЕ МЕНЮ КАТЕГОРІЙ ── */
+    .cat-tree { list-style: none; padding: 8px 0; }
+    .cat-tree ul { list-style: none; }
+    .cat-tree > li { border-bottom: 1px solid var(--gray-4); }
+    .cat-tree > li:last-child { border-bottom: none; }
+
+    .cat-item-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background .15s;
+    }
+    .cat-item-wrapper:hover { background: var(--gray-5); }
+    
+    /* Загальний стиль для всіх посилань */
+    .cat-link {
+        flex: 1;
+        display: block;
+        color: var(--dark);
+        text-decoration: none;
+        transition: color .15s, background .15s;
+        border-left: 3px solid transparent;
+    }
+    .cat-link:hover, .cat-link.active {
+        color: var(--green);
+    }
+    .cat-link.active {
+        background: var(--green-light);
+        border-left-color: var(--green);
+    }
+
+    /* Відступи для різних рівнів */
+    .cat-link-lvl1 { padding: 11px 18px; font-size: 14px; font-weight: 600; border-left: none; }
+    .cat-link-lvl1.active { background: transparent; color: var(--green); } /* 1 рівень без зеленого фону */
+    
+    .cat-link-lvl2 { padding: 8px 18px 8px 32px; font-size: 13px; font-weight: 500; color: var(--gray-1); }
+    .cat-link-lvl3 { padding: 8px 18px 8px 46px; font-size: 13px; font-weight: 400; color: var(--gray-2); }
+
+    /* Стрілочки */
+    .cat-toggle {
+        background: none;
+        border: none;
+        padding: 10px 18px;
+        cursor: pointer;
+        color: var(--gray-3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform .2s, color .2s;
+        font-size: 16px;
+    }
+    .cat-toggle:hover { color: var(--green); }
+    .cat-toggle.open { transform: rotate(90deg); color: var(--green); }
+
+    .cat-children { display: none; background: var(--gray-5); }
+    .cat-children.open { display: block; }
+
+    /* ── MAIN AREA (БЕЗ ЗМІН) ── */
+    .toolbar {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .toolbar-left { font-size: 13px; color: var(--gray-2); }
+    .toolbar-left strong { color: var(--dark); font-weight: 700; }
+    .toolbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .sort-select {
+        border: 1px solid var(--gray-4);
+        border-radius: 6px;
+        padding: 7px 12px;
+        font-family: var(--font);
+        font-size: 13px;
+        color: var(--dark);
+        cursor: pointer;
+        outline: none;
+        background: var(--white);
+        transition: border-color .2s;
+    }
+    .sort-select:focus { border-color: var(--green); }
+
+    .view-toggle { display: flex; gap: 4px; }
+    .view-btn {
+        width: 34px; height: 34px;
+        border: 1px solid var(--gray-4);
+        border-radius: 6px;
+        background: var(--white);
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--gray-2);
+        transition: all .2s;
+    }
+    .view-btn.active, .view-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+    .view-btn svg { width: 16px; height: 16px; }
+
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 16px;
+    }
+
+    .product-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow .2s, transform .2s;
+        position: relative;
+        text-decoration: none;
+        color: inherit;
+    }
+    .product-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+
+    .card-badge {
+        position: absolute; top: 10px; left: 10px; background: var(--red);
+        color: var(--white); font-size: 11px; font-weight: 700; padding: 3px 8px;
+        border-radius: 4px; z-index: 2;
+    }
+    .card-badge.new { background: var(--green); }
+
+    .card-wishlist {
+        position: absolute; top: 8px; right: 8px; background: var(--white); border: none;
+        border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center;
+        justify-content: center; cursor: pointer; box-shadow: 0 1px 6px rgba(0,0,0,.12);
+        color: var(--gray-3); transition: color .2s, transform .2s; z-index: 2;
+    }
+    .card-wishlist:hover { color: var(--red); transform: scale(1.12); }
+    .card-wishlist svg { width: 16px; height: 16px; }
+
+    .card-img {
+        width: 100%; aspect-ratio: 1; background: var(--gray-5); display: flex;
+        align-items: center; justify-content: center; padding: 20px; border-bottom: 1px solid var(--gray-4);
+    }
+    .card-img svg { width: 80px; height: 80px; color: var(--gray-3); }
+
+    .card-body { padding: 14px; display: flex; flex-direction: column; flex: 1; gap: 8px; }
+    .card-category { font-size: 11px; color: var(--green); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .card-name { font-size: 14px; font-weight: 600; color: var(--dark); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .card-rating-row { display: flex; align-items: center; gap: 6px; margin-top: auto; margin-bottom: 4px; }
+    .stars-wrapper { position: relative; display: inline-block; font-size: 14px; color: var(--gray-4); line-height: 1; letter-spacing: 1px; }
+    .stars-filled { position: absolute; top: 0; left: 0; white-space: nowrap; overflow: hidden; color: var(--orange); }
+    .rating-count { font-size: 11px; color: var(--gray-2); }
+
+    .card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--gray-4); }
+    .card-price { font-size: 20px; font-weight: 800; color: var(--dark); }
+    .card-price span { font-size: 13px; font-weight: 500; color: var(--gray-2); }
+
+    .btn-cart {
+        background: var(--green); color: var(--white); border: none; border-radius: 6px;
+        padding: 8px 14px; font-family: var(--font); font-size: 13px; font-weight: 700;
+        cursor: pointer; transition: background .2s, transform .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-cart:hover { background: var(--green-dark); transform: scale(1.03); }
+
+    .empty-state { text-align: center; padding: 60px 20px; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .empty-state svg { width: 72px; height: 72px; color: var(--gray-3); margin-bottom: 16px; }
+    .empty-state h3 { font-size: 20px; color: var(--gray-1); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; color: var(--gray-2); }
+
+    @media (max-width: 900px) { .catalog-layout { grid-template-columns: 1fr; } .sidebar { position: static; } }
+    @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="/">Головна</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Каталог товарів</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="catalog-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            Категорії
+        </div>
+        <ul class="cat-tree">
+            {% for category in categories %}
+                {% if not category.parent %}
+                    <!-- ── РІВЕНЬ 1 (Кореневі) ── -->
+                    <li>
+                        <div class="cat-item-wrapper">
+                            <a href="?category={{ category.id }}{% if query %}&q={{ query }}{% endif %}" 
+                               class="cat-link cat-link-lvl1 {% if current_category_id == category.id %}active{% endif %}">
+                                {{ category.name }}
+                            </a>
+                            {% if category.subcategories.exists %}
+                                <button type="button" class="cat-toggle" onclick="toggleSubCat(this)">›</button>
+                            {% endif %}
+                        </div>
+
+                        <!-- ── РІВЕНЬ 2 (Підкатегорії) ── -->
+                        {% if category.subcategories.exists %}
+                            <ul class="cat-children">
+                                {% for sub in category.subcategories.all %}
+                                    <li>
+                                        <div class="cat-item-wrapper">
+                                            <a href="?category={{ sub.id }}{% if query %}&q={{ query }}{% endif %}" 
+                                               class="cat-link cat-link-lvl2 {% if current_category_id == sub.id %}active{% endif %}">
+                                                {{ sub.name }}
+                                            </a>
+                                            <!-- Кнопка стрілочки для 3-го рівня -->
+                                            {% if sub.subcategories.exists %}
+                                                <button type="button" class="cat-toggle" onclick="toggleSubCat(this)">›</button>
+                                            {% endif %}
+                                        </div>
+
+                                        <!-- ── РІВЕНЬ 3 (Під-підкатегорії) ── -->
+                                        {% if sub.subcategories.exists %}
+                                            <ul class="cat-children">
+                                                {% for subsub in sub.subcategories.all %}
+                                                    <li>
+                                                        <a href="?category={{ subsub.id }}{% if query %}&q={{ query }}{% endif %}" 
+                                                           class="cat-link cat-link-lvl3 {% if current_category_id == subsub.id %}active{% endif %}">
+                                                            {{ subsub.name }}
+                                                        </a>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </li>
+                {% endif %}
+            {% empty %}
+                <li style="padding:16px 18px; font-size:13px; color:var(--gray-2);">
+                    Категорії відсутні
+                </li>
+            {% endfor %}
+        </ul>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="catalog-main">
+
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                {% if query %}
+                    Результати пошуку "<strong>{{ query }}</strong>": знайдено <strong>{{ products|length }}</strong> товарів
+                {% else %}
+                    Знайдено: <strong>{{ products|length }} товарів</strong>
+                {% endif %}
+            </div>
+            <div class="toolbar-right">
+                <select class="sort-select">
+                    <option>За популярністю</option>
+                    <option>Від дешевих до дорогих</option>
+                    <option>Від дорогих до дешевих</option>
+                    <option>Новинки</option>
+                </select>
+                <div class="view-toggle">
+                    <button class="view-btn active" title="Сітка">
+                        <svg fill="currentColor" viewBox="0 0 16 16">
+                            <rect x="1" y="1" width="6" height="6" rx="1"/>
+                            <rect x="9" y="1" width="6" height="6" rx="1"/>
+                            <rect x="1" y="9" width="6" height="6" rx="1"/>
+                            <rect x="9" y="9" width="6" height="6" rx="1"/>
+                        </svg>
+                    </button>
+                    <button class="view-btn" title="Список">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                            <line x1="2" y1="4" x2="14" y2="4"/>
+                            <line x1="2" y1="8" x2="14" y2="8"/>
+                            <line x1="2" y1="12" x2="14" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS -->
+        {% if products %}
+            <div class="products-grid">
+                {% for product in products %}
+                <a href="{% url 'product_detail' pk=product.pk %}" class="product-card">
+
+                    {% if product.is_discounted %}
+                        <span class="card-badge" style="background: var(--orange);">-{{ product.active_discount.value }}%</span>
+                    {% elif not product.is_available %}
+                        <span class="card-badge">Немає в наявності</span>
+                    {% else %}
+                        <span class="card-badge new">Новинка</span>
+                    {% endif %}
+
+                    <!-- Зверни увагу: я додав клас active, якщо товар в обраному, і data-id -->
+                    <button class="card-wishlist fav-btn {% if product.id in user_favorite_ids %}active{% endif %}" 
+                            data-url="{% url 'toggle_favorite' product.id %}" 
+                            title="Додати до обраного">
+                        
+                        <!-- Якщо в обраному - сердечко зафарбоване, якщо ні - пусте -->
+                        <svg fill="{% if product.id in user_favorite_ids %}var(--red){% else %}none{% endif %}" 
+                            stroke="{% if product.id in user_favorite_ids %}var(--red){% else %}currentColor{% endif %}" 
+                            viewBox="0 0 24 24">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                    </button>
+
+                    <div class="card-img">
+                        {% if product.images.all %}
+                            <img src="{{ product.images.all.0.image_url }}" alt="{{ product.name }}" style="width:100%; height:100%; object-fit:contain;">
+                        {% else %}
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-body">
+                        <div class="card-category">{{ product.category }}</div>
+                        <div class="card-name">{{ product.name }}</div>
+
+                        <div class="card-rating-row">
+                            <div class="stars-wrapper" title="Рейтинг: {{ product.average_rating }} з 5">
+                                ★★★★★
+                                <div class="stars-filled" style="width: {{ product.rating_percentage|stringformat:'.0f' }}%;">
+                                    ★★★★★
+                                </div>
+                            </div>
+                            <span class="rating-count">
+                                {% if product.ratings_count > 0 %}
+                                    {{ product.ratings_count }} відгуків
+                                {% else %}
+                                    Немає відгуків
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="card-price">
+                                {% if product.is_discounted %}
+                                    <div style="font-size: 13px; text-decoration: line-through; color: var(--gray-3); font-weight: 500;">
+                                        {{ product.price|floatformat:0 }} ₴
+                                    </div>
+                                    <div style="color: var(--red);">
+                                        {{ product.get_current_price|floatformat:0 }} <span>грн</span>
+                                    </div>
+                                {% else %}
+                                    <div>
+                                        {{ product.price|floatformat:0 }} <span>грн</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if product.is_available %}
+                                <form action="{% url 'cart_add' pk=product.pk %}" method="post" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-cart">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                                            <line x1="3" y1="6" x2="21" y2="6"/>
+                                            <path d="M16 10a4 4 0 0 1-8 0"/>
+                                        </svg>
+                                        Купити
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="unavailable-label">Немає в наявності</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <h3>Товарів не знайдено</h3>
+                <p>Спробуйте змінити фільтри або обрати іншу категорію</p>
+            </div>
+        {% endif %}
+
+    </div><!-- /catalog-main -->
+</div><!-- /catalog-layout -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Відкриття/закриття списку підкатегорій по кліку на стрілочку
+function toggleSubCat(btn) {
+    btn.classList.toggle('open');
+    const wrapper = btn.closest('.cat-item-wrapper');
+    const childrenUl = wrapper.nextElementSibling;
+    if (childrenUl && childrenUl.classList.contains('cat-children')) {
+        childrenUl.classList.toggle('open');
+    }
+}
+
+// Потужний скрипт для розгортання всього дерева для активної категорії!
+document.addEventListener('DOMContentLoaded', function() {
+    const activeLink = document.querySelector('.cat-link.active');
+    
+    if (activeLink) {
+        // Проходимось вгору по дереву DOM і відкриваємо всі батьківські ul.cat-children
+        let currentEl = activeLink;
+        
+        while (currentEl) {
+            const parentUl = currentEl.closest('.cat-children');
+            if (!parentUl) break; // Дійшли до самого верху
+            
+            // Відкриваємо знайдений список (наприклад, рівень 3 або 2)
+            parentUl.classList.add('open');
+            
+            // Знаходимо стрілочку цього списку (щоб перевернути її вниз)
+            const parentWrapper = parentUl.previousElementSibling;
+            if (parentWrapper) {
+                const toggleBtn = parentWrapper.querySelector('.cat-toggle');
+                if (toggleBtn) toggleBtn.classList.add('open');
+            }
+            
+            // Піднімаємось ще на рівень вище
+            currentEl = parentUl.parentElement;
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,799 @@
+{% extends "core/base.html" %}
+
+{% block title %}Оформлення замовлення — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .checkout-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 32px;
+        align-items: start;
+        margin-top: 20px;
+    }
+
+    .checkout-section {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+
+    .checkout-section h2 {
+        font-size: 20px;
+        font-weight: 800;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-number {
+        background: var(--green);
+        color: var(--white);
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    /* Стилі форми */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--gray-1); }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea,
+    select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1.5px solid var(--gray-4);
+        border-radius: var(--radius);
+        font-family: var(--font);
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background: var(--white);
+        box-sizing: border-box;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="tel"]:focus,
+    textarea:focus,
+    select:focus {
+        outline: none;
+        border-color: var(--green);
+        box-shadow: 0 0 0 3px rgba(0, 168, 89, 0.12);
+    }
+
+    input.field-error,
+    select.field-error {
+        border-color: var(--red, #e53935);
+    }
+
+    .field-error-msg {
+        font-size: 12px;
+        color: var(--red, #e53935);
+        margin-top: 4px;
+        display: none;
+    }
+
+    /* Радіо-кнопки (Доставка і Оплата) */
+    .radio-grid { display: grid; gap: 12px; }
+
+    .radio-item {
+        border: 1.5px solid var(--gray-4);
+        border-radius: 8px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .radio-item:hover { border-color: var(--green); background: var(--green-light); }
+    .radio-item.active { border-color: var(--green); background: var(--green-light); }
+    .radio-item input[type="radio"] { display: none; }
+
+    .radio-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid var(--gray-3, #bbb);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.2s;
+    }
+
+    .radio-item.active .radio-dot {
+        border-color: var(--green);
+    }
+
+    .radio-dot::after {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .radio-item.active .radio-dot::after { opacity: 1; }
+
+    .radio-content { flex: 1; }
+    .radio-title { display: block; font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+    .radio-desc { font-size: 12px; color: var(--gray-2); }
+
+    /* Пошук міста і список відділень */
+    .np-search-container { position: relative; }
+
+    .np-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1.5px solid var(--gray-4);
+        border-radius: 8px;
+        box-shadow: var(--shadow-hover);
+        z-index: 100;
+        max-height: 220px;
+        overflow-y: auto;
+        display: none;
+    }
+
+    .np-dropdown div {
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.15s;
+    }
+
+    .np-dropdown div:hover { background: var(--gray-5); color: var(--green); }
+    .np-dropdown .np-empty { color: var(--gray-2); cursor: default; }
+    .np-dropdown .np-empty:hover { background: none; color: var(--gray-2); }
+
+    /* Секція адреси — плавна поява */
+    #delivery-detail-section {
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        opacity: 0;
+    }
+
+    #delivery-detail-section.visible {
+        max-height: 300px;
+        opacity: 1;
+    }
+
+    /* Підсумок замовлення */
+    .order-summary {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 24px;
+        position: sticky;
+        top: 90px;
+    }
+
+    .summary-title {
+        font-size: 18px;
+        font-weight: 800;
+        border-bottom: 1px solid var(--gray-4);
+        padding-bottom: 16px;
+        margin-bottom: 20px;
+    }
+
+    .summary-items {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        margin-bottom: 8px;
+        gap: 8px;
+    }
+
+    .summary-item-name {
+        color: var(--gray-1);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .summary-item-qty { color: var(--gray-2); font-size: 12px; margin-right: 4px; }
+    .summary-item-price { font-weight: 600; white-space: nowrap; }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+
+    .summary-total {
+        border-top: 1px solid var(--gray-4);
+        margin-top: 16px;
+        padding-top: 16px;
+        font-size: 22px;
+        font-weight: 800;
+    }
+
+    .btn-submit {
+        width: 100%;
+        background: var(--green);
+        color: white;
+        border: none;
+        padding: 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 24px;
+        transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-submit:hover { background: var(--green-dark); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { background: var(--gray-3); cursor: not-allowed; }
+
+    .terms-note {
+        font-size: 11px;
+        color: var(--gray-2);
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .checkout-layout { grid-template-columns: 1fr; }
+        .order-summary { position: static; }
+        .form-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+        .checkout-layout { grid-template-columns: 1fr; }
+        .order-summary { position: static; margin-top: 20px; }
+    }
+    
+    @media (max-width: 600px) {
+        .form-row { grid-template-columns: 1fr; gap: 0; }
+        .checkout-section { padding: 16px; margin-bottom: 16px; }
+        .checkout-section h2 { font-size: 18px; }
+        .radio-item { padding: 12px; }
+        .btn-submit { padding: 14px; font-size: 15px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="checkout-form" novalidate>
+    {% csrf_token %}
+    {{ form.city_ref }}
+    {{ form.warehouse_ref }}
+
+    <div class="checkout-layout">
+        <div class="checkout-main">
+
+            <div class="checkout-section">
+                <h2><span class="section-number">1</span> Контактні дані</h2>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.last_name.id_for_label }}">Прізвище *</label>
+                        {{ form.last_name }}
+                        <span class="field-error-msg" id="err-last_name">Введіть прізвище</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.first_name.id_for_label }}">Ім'я *</label>
+                        {{ form.first_name }}
+                        <span class="field-error-msg" id="err-first_name">Введіть ім'я</span>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.middle_name.id_for_label }}">По батькові</label>
+                        {{ form.middle_name }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.number.id_for_label }}">Телефон *</label>
+                        {{ form.number }}
+                        <span class="field-error-msg" id="err-number">Введіть номер телефону</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.email.id_for_label }}">Email (необов'язково)</label>
+                    {{ form.email }}
+                </div>
+            </div>
+
+            <!-- Секція 2: Доставка -->
+            <div class="checkout-section">
+                <h2><span class="section-number">2</span> Доставка</h2>
+
+                <div class="form-group">
+                    <label for="{{ form.city.id_for_label }}">Ваше місто *</label>
+                    <div class="np-search-container">
+                        {{ form.city }}
+                        <div id="city-results" class="np-dropdown"></div>
+                    </div>
+                    <span class="field-error-msg" id="err-city">Оберіть місто зі списку</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Спосіб доставки *</label>
+                    <div class="radio-grid">
+                        {% for radio in form.delivery_method %}
+                            <label class="radio-item" data-value="{{ radio.data.value }}">
+                                {{ radio.tag }}
+                                <div class="radio-dot"></div>
+                                <div class="radio-content">
+                                    <span class="radio-title">{{ radio.choice_label }}</span>
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <span class="field-error-msg" id="err-delivery_method">Оберіть спосіб доставки</span>
+                </div>
+
+                <!-- Динамічна секція: відділення або адреса курʼєра -->
+                <div id="delivery-detail-section">
+                    <!-- Для відділення / поштомату -->
+                    <div class="form-group" id="warehouse-group" style="display: none;">
+                        <label id="warehouse-label">Відділення / Поштомат *</label>
+                        <select id="warehouse-select" disabled>
+                            <option value="">Оберіть відділення...</option>
+                        </select>
+                        {# Приховані поля для передачі значень у форму #}
+                        <input type="hidden" name="address" id="id_address">
+                        <span class="field-error-msg" id="err-warehouse">Оберіть відділення</span>
+                    </div>
+
+                    <!-- Для курʼєра -->
+                    <div class="form-group" id="courier-group" style="display: none;">
+                        <label for="id_courier_address">Адреса доставки *</label>
+                        <input
+                            type="text"
+                            id="id_courier_address"
+                            placeholder="вул. Хрещатик, 1, кв. 5"
+                        >
+                        <span class="field-error-msg" id="err-courier_address">Введіть адресу доставки</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Секція 3: Оплата -->
+            <div class="checkout-section">
+                <h2><span class="section-number">3</span> Оплата</h2>
+
+                <div class="radio-grid">
+                    {% for radio in form.payment_method %}
+                        <label class="radio-item payment-radio" data-value="{{ radio.data.value }}">
+                            {{ radio.tag }}
+                            <div class="radio-dot"></div>
+                            <div class="radio-content">
+                                <span class="radio-title">{{ radio.choice_label }}</span>
+                                <span class="radio-desc">
+                                    {% if radio.data.value == "postpaid" %}
+                                        Комісія: 20 грн + 2%
+                                    {% else %}
+                                        Без комісії
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </label>
+                    {% endfor %}
+                </div>
+                <span class="field-error-msg" id="err-payment_method">Оберіть спосіб оплати</span>
+
+                <div class="form-group" style="margin-top: 24px;">
+                    <label for="{{ form.comment.id_for_label }}">Коментар до замовлення</label>
+                    {{ form.comment }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Бічна панель: підсумок -->
+        <aside class="checkout-sidebar">
+            <div class="order-summary">
+                <div class="summary-title">Ваше замовлення</div>
+
+                <!-- Перелік товарів з кошика -->
+                <div class="summary-items">
+                    {% for item in cart.items.all %}
+                        <div class="summary-item">
+                            <span class="summary-item-name">{{ item.product.name }}</span>
+                            <span class="summary-item-qty">×{{ item.quantity }}</span>
+                            <span class="summary-item-price">{{ item.get_total_price|floatformat:0 }} ₴</span>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="summary-row">
+                    <span>Товари ({{ cart.items.count }})</span>
+                    <span id="base-total" data-value="{{ cart.get_total_price }}">{{ cart.get_total_price|floatformat:0 }} ₴</span>
+                </div>
+
+                <div class="summary-row" id="fee-row" style="display: none; color: var(--red);">
+                    <span>Комісія накладеного</span>
+                    <span id="postpaid-fee">0 ₴</span>
+                </div>
+
+                <div class="summary-row summary-total">
+                    <span>До сплати:</span>
+                    <span id="final-total">{{ cart.get_total_price|floatformat:0 }} ₴</span>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submit-btn">
+                    Підтвердити замовлення
+                </button>
+
+                <p class="terms-note">
+                    Натискаючи кнопку, ви погоджуєтесь з умовами обслуговування
+                </p>
+            </div>
+        </aside>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ─── Елементи ──────────────────────────────────────────────────────────────
+    const cityInput         = document.getElementById('id_city');
+    const cityResults       = document.getElementById('city-results');
+    const cityRefInput      = document.getElementById('id_city_ref');
+    const deliverySection   = document.getElementById('delivery-detail-section');
+    const warehouseGroup    = document.getElementById('warehouse-group');
+    const warehouseSelect   = document.getElementById('warehouse-select');
+    const warehouseLabel    = document.getElementById('warehouse-label');
+    const warehouseRefInput = document.getElementById('id_warehouse_ref');
+    const addressInput      = document.getElementById('id_address');
+    const courierGroup      = document.getElementById('courier-group');
+    const courierInput      = document.getElementById('id_courier_address');
+    const deliveryRadios    = document.querySelectorAll('input[name="delivery_method"]');
+    const paymentRadios     = document.querySelectorAll('input[name="payment_method"]');
+    const baseTotal         = parseFloat(document.getElementById('base-total').dataset.value) || 0;
+
+    // ─── 1. Пошук міста (Нова Пошта) ──────────────────────────────────────────
+    let citySelected = !!cityRefInput.value;  // true якщо вже є значення
+    let debounceTimer;
+
+    cityInput.addEventListener('input', function () {
+        citySelected = false;
+        cityRefInput.value = '';
+        clearTimeout(debounceTimer);
+
+        const query = this.value.trim();
+        if (query.length < 2) {
+            cityResults.style.display = 'none';
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/orders/api/np/cities/?q=${encodeURIComponent(query)}`) // Переконайся, що шлях збігається з твоїм urls.py!
+                .then(res => res.json())
+                .then(data => {
+                    cityResults.innerHTML = '';
+                    
+                    // ЗМІНЕНО: Беремо дані прямо з data.data
+                    const cities = data.data || []; 
+                    
+                    if (data.success && cities.length > 0) {
+                        cities.forEach(item => {
+                            const div = document.createElement('div');
+                            
+                            // Формуємо гарну назву (напр. "місто Черкаси")
+                            const type = item.SettlementTypeDescription || '';
+                            div.textContent = `${type} ${item.Description}`.trim();
+                            
+                            div.addEventListener('mousedown', (e) => {
+                                // mousedown замість click — щоб спрацювало раніше blur
+                                e.preventDefault();
+                                // Передаємо Description та Ref
+                                selectCity(item.Description, item.Ref); 
+                            });
+                            cityResults.appendChild(div);
+                        });
+                        cityResults.style.display = 'block';
+                    } else {
+                        const empty = document.createElement('div');
+                        empty.textContent = 'Місто не знайдено';
+                        empty.className = 'np-empty';
+                        cityResults.appendChild(empty);
+                        cityResults.style.display = 'block';
+                    }
+                })
+                .catch(() => { cityResults.style.display = 'none'; });
+        }, 300);
+    });
+
+    cityInput.addEventListener('blur', () => {
+        setTimeout(() => { cityResults.style.display = 'none'; }, 150);
+    });
+
+    // Закрити дропдаун при кліку поза ним
+    document.addEventListener('click', (e) => {
+        if (!cityInput.contains(e.target) && !cityResults.contains(e.target)) {
+            cityResults.style.display = 'none';
+        }
+    });
+
+    function selectCity(name, ref) {
+        cityInput.value = name;
+        cityRefInput.value = ref; // Сюди запишеться UUID (напр. db5c8902-391c-11dd-90d9-001a92567626)
+        cityResults.style.display = 'none';
+        citySelected = true;
+        clearFieldError('city');
+
+        // Якщо вже обраний тип доставки — одразу завантажуємо відділення
+        const method = getDeliveryMethod();
+        if (method && method !== 'np_courier') {
+            loadWarehouses(ref, method);
+        }
+    }
+
+    // ─── 2. Перемикання типу доставки ─────────────────────────────────────────
+    function getDeliveryMethod() {
+        const checked = document.querySelector('input[name="delivery_method"]:checked');
+        return checked ? checked.value : null;
+    }
+
+    function showDeliveryDetail(method) {
+        if (!method) {
+            deliverySection.classList.remove('visible');
+            warehouseGroup.style.display = 'none';
+            courierGroup.style.display = 'none';
+            return;
+        }
+
+        deliverySection.classList.add('visible');
+
+        if (method === 'np_courier') {
+            // Курʼєр — показуємо поле адреси, ховаємо відділення
+            warehouseGroup.style.display = 'none';
+            courierGroup.style.display = 'block';
+            // Скидаємо дані відділення
+            warehouseRefInput.value = '';
+            addressInput.value = '';
+            warehouseSelect.value = '';
+        } else {
+            // Відділення або поштомат
+            courierGroup.style.display = 'none';
+            warehouseGroup.style.display = 'block';
+            courierInput.value = '';
+
+            // Оновлюємо лейбл
+            warehouseLabel.textContent = method === 'np_postomat'
+                ? 'Поштомат *'
+                : 'Відділення *';
+
+            // Скидаємо попереднє відділення і завантажуємо нові
+            warehouseRefInput.value = '';
+            addressInput.value = '';
+            warehouseSelect.innerHTML = '<option value="">Оберіть відділення...</option>';
+
+            if (citySelected && cityRefInput.value) {
+                loadWarehouses(cityRefInput.value, method);
+            }
+        }
+    }
+
+    deliveryRadios.forEach(radio => {
+        radio.addEventListener('change', function () {
+            syncRadioStyles();
+            clearFieldError('delivery_method');
+            showDeliveryDetail(this.value);
+        });
+    });
+
+    // Відновити стан, якщо форма повернулась із помилкою Django
+    const initialMethod = getDeliveryMethod();
+    if (initialMethod) showDeliveryDetail(initialMethod);
+
+    // ─── 3. Завантаження відділень / поштоматів ────────────────────────────────
+    function loadWarehouses(cityRef, method) {
+        warehouseSelect.innerHTML = '<option value="">Завантаження...</option>';
+        warehouseSelect.disabled = true;
+
+        // Фільтруємо: поштомат = TypeOfWarehouse == postomat (НП поверне через Description)
+        let url = `/orders/api/np/warehouses/?city_ref=${cityRef}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                warehouseSelect.disabled = false;
+                warehouseSelect.innerHTML = '<option value="">Оберіть відділення...</option>';
+
+                if (data.success && data.data.length > 0) {
+                    data.data
+                        .filter(wh => {
+                            if (method === 'np_postomat') {
+                                // Поштомати — у НП назва містить "Поштомат"
+                                return wh.Description.toLowerCase().includes('поштомат') ||
+                                       wh.CategoryOfWarehouse === 'Postomat';
+                            } else {
+                                // Звичайні відділення
+                                return !wh.Description.toLowerCase().includes('поштомат') &&
+                                       wh.CategoryOfWarehouse !== 'Postomat';
+                            }
+                        })
+                        .forEach(wh => {
+                            const opt = document.createElement('option');
+                            opt.value = wh.Ref;
+                            opt.textContent = wh.Description;
+                            opt.dataset.address = wh.Description;
+                            warehouseSelect.appendChild(opt);
+                        });
+
+                    if (warehouseSelect.options.length === 1) {
+                        warehouseSelect.innerHTML = '<option value="">Немає доступних відділень</option>';
+                    }
+                } else {
+                    warehouseSelect.innerHTML = '<option value="">Немає відділень у цьому місті</option>';
+                }
+            })
+            .catch(() => {
+                warehouseSelect.disabled = false;
+                warehouseSelect.innerHTML = '<option value="">Помилка завантаження</option>';
+            });
+    }
+
+    warehouseSelect.addEventListener('change', function () {
+        const selected = this.options[this.selectedIndex];
+        warehouseRefInput.value = this.value;
+        addressInput.value = selected.dataset.address || selected.text;
+        if (this.value) clearFieldError('warehouse');
+    });
+
+    // ─── 4. Динамічний розрахунок комісії ─────────────────────────────────────
+    function updateTotals() {
+        const isPostpaid = document.querySelector('input[name="payment_method"][value="postpaid"]')?.checked;
+        const feeRow  = document.getElementById('fee-row');
+        const feeVal  = document.getElementById('postpaid-fee');
+        const finalVal = document.getElementById('final-total');
+
+        if (isPostpaid) {
+            const fee = 20 + (baseTotal * 0.02);
+            feeRow.style.display = 'flex';
+            feeVal.textContent = Math.round(fee) + ' ₴';
+            finalVal.textContent = Math.round(baseTotal + fee) + ' ₴';
+        } else {
+            feeRow.style.display = 'none';
+            finalVal.textContent = Math.round(baseTotal) + ' ₴';
+        }
+    }
+
+    paymentRadios.forEach(r => r.addEventListener('change', function () {
+        syncRadioStyles();
+        clearFieldError('payment_method');
+        updateTotals();
+    }));
+    updateTotals();
+
+    // ─── 5. Стилізація активних радіо-кнопок ──────────────────────────────────
+    function syncRadioStyles() {
+        document.querySelectorAll('.radio-item').forEach(item => {
+            const input = item.querySelector('input[type="radio"]');
+            if (input) {
+                item.classList.toggle('active', input.checked);
+            }
+        });
+    }
+    syncRadioStyles();
+
+    // ─── 6. Клієнтська валідація перед відправкою ──────────────────────────────
+    function showFieldError(field) {
+        const input = document.getElementById('id_' + field) ||
+                      document.querySelector(`input[name="${field}"]`);
+        const msg   = document.getElementById('err-' + field);
+        if (input) input.classList.add('field-error');
+        if (msg)   msg.style.display = 'block';
+    }
+
+    function clearFieldError(field) {
+        const input = document.getElementById('id_' + field) ||
+                      document.querySelector(`input[name="${field}"]`);
+        const msg   = document.getElementById('err-' + field);
+        if (input) input.classList.remove('field-error');
+        if (msg)   msg.style.display = 'none';
+    }
+
+    document.getElementById('checkout-form').addEventListener('submit', function (e) {
+        let valid = true;
+
+        // Обов'язкові текстові поля
+        ['first_name', 'last_name', 'number'].forEach(field => {
+            const el = document.getElementById('id_' + field);
+            if (!el || !el.value.trim()) {
+                showFieldError(field);
+                valid = false;
+            } else {
+                clearFieldError(field);
+            }
+        });
+
+        // Місто — має бути обране зі списку (є city_ref)
+        if (!cityRefInput.value) {
+            showFieldError('city');
+            valid = false;
+        } else {
+            clearFieldError('city');
+        }
+
+        // Спосіб доставки
+        const method = getDeliveryMethod();
+        if (!method) {
+            showFieldError('delivery_method');
+            valid = false;
+        } else {
+            clearFieldError('delivery_method');
+
+            if (method === 'np_courier') {
+                // Курʼєр: потрібна адреса і записати її в приховане поле
+                if (!courierInput.value.trim()) {
+                    showFieldError('courier_address');
+                    valid = false;
+                } else {
+                    clearFieldError('courier_address');
+                    addressInput.value = courierInput.value.trim();
+                }
+            } else {
+                // Відділення / поштомат: потрібно обране відділення
+                if (!warehouseRefInput.value) {
+                    showFieldError('warehouse');
+                    valid = false;
+                } else {
+                    clearFieldError('warehouse');
+                }
+            }
+        }
+
+        // Спосіб оплати
+        if (!document.querySelector('input[name="payment_method"]:checked')) {
+            showFieldError('payment_method');
+            valid = false;
+        } else {
+            clearFieldError('payment_method');
+        }
+
+        if (!valid) {
+            e.preventDefault();
+            // Прокрутка до першої помилки
+            const firstErr = document.querySelector('.field-error');
+            if (firstErr) {
+                firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+
+    // Знімаємо помилки при вводі
+    document.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"]').forEach(el => {
+        el.addEventListener('input', function () {
+            const name = this.name || this.id.replace('id_', '');
+            clearFieldError(name);
+        });
+    });
+});
+</script>
+{% endblock %}
