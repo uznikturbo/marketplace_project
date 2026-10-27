@@ -142,6 +142,25 @@ rozetka2.0/
 Each app owns its models, views, URLs and templates. Shared helpers live in
 `catalog/utils.py` and `core/`.
 
+### Frontend structure
+
+The UI is server-rendered with Django templates and has no build step. Shared
+pieces are plain `{% include %}` partials (files prefixed with `_`) so the same
+markup and CSS are defined once:
+
+| Partial | Used by | Purpose |
+| --- | --- | --- |
+| `vendors/_sidebar.html` | all vendor pages | Seller Hub navigation (`active`, `show_orders`, `show_back`) |
+| `vendors/_product_form_fields.html` | create/edit product | image formset + dynamic characteristics |
+| `vendors/_product_form_js.html` | create/edit product | formset and JSON `properties` logic (`edit_mode`) |
+| `users/_profile_sidebar.html` | profile, orders, wishlist | user card + navigation (`active`) |
+| `users/_profile_nav.html` | profile pages | profile menu links |
+| `catalog/_wishlist_empty.html` | both wishlist pages | empty-state block |
+| `*/_styles_*.html` | 2–6 pages each | verbatim shared CSS rules |
+
+`core/base.html` holds the design tokens, header, footer and global styles;
+page-specific CSS lives in a `{% block extra_css %}` on each page.
+
 ---
 
 ## Getting started

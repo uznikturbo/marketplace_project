@@ -1,0 +1,106 @@
+            {% if form.non_field_errors %}
+                <div class="non-field-errors">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="form-grid">
+                {% for field in form %}
+                    {% if field.name == 'is_available' %}
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <div class="checkbox-group">
+                                {{ field }}
+                                {{ field.label_tag }}
+                            </div>
+                        </div>
+
+                    {% elif field.name == 'properties' %}
+                        <!-- ── МАГІЯ ДЛЯ ХАРАКТЕРИСТИК (JSON) ── -->
+                        <div class="form-group full-width">
+                            <label>Характеристики товару (напр. Бренд - Apple)</label>
+                            
+                            <!-- Цей div буде містити справжню джангівську textarea, але ми її сховаємо -->
+                            <div style="display: none;">
+                                {{ field }}
+                            </div>
+                            
+                            <!-- Контейнер для красивих інпутів -->
+                            <div id="dynamic-properties-container">
+                                <!-- Сюди JS буде додавати рядки -->
+                            </div>
+                            
+                            <button type="button" id="add-property-btn" class="btn-add-prop">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Додати характеристику
+                            </button>
+                            
+                            {% if field.errors %}
+                                <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
+
+                    {% else %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                                <ul class="errorlist">
+                                    {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                <div class="form-group full-width">
+                    <label>Зображення товару (Вставте посилання на фотографії)</label>
+                    
+                    <!-- Обов'язкова штука для Django FormSets -->
+                    {{ formset.management_form }}
+                    
+                    <div id="image-formset-container">
+                        <!-- Рендеримо вже існуючі поля (при редагуванні або якщо була помилка валідації) -->
+                        {% for img_form in formset %}
+                            <div class="image-row property-row">
+                                <!-- Приховані поля (ID фотографії) -->
+                                {% for hidden in img_form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                                
+                                {{ img_form.image_url }}
+                                
+                                <!-- Чекбокс видалення від Django (ховаємо його, керуємо через JS) -->
+                                <div style="display: none;" class="delete-checkbox-wrapper">
+                                    {{ img_form.DELETE }}
+                                </div>
+                                
+                                <button type="button" class="btn-remove-prop btn-remove-img" title="Видалити">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="button" id="add-image-btn" class="btn-add-prop" style="margin-top: 8px;">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Додати ще одне фото
+                    </button>
+
+                    <!-- Пустий шаблон, який JS буде клонувати при натисканні "Додати ще одне фото" -->
+                    <div id="empty-image-form" style="display: none;">
+                        <div class="image-row property-row">
+                            {% for hidden in formset.empty_form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            {{ formset.empty_form.image_url }}
+                            
+                            <div style="display: none;" class="delete-checkbox-wrapper">
+                                {{ formset.empty_form.DELETE }}
+                            </div>
+                            
+                            <button type="button" class="btn-remove-prop btn-remove-img" title="Видалити">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            

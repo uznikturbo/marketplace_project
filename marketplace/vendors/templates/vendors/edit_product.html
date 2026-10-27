@@ -7,28 +7,18 @@
     .vendor-wrapper { display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start; margin-top: 20px; margin-bottom: 40px; }
     @media (max-width: 860px) { .vendor-wrapper { grid-template-columns: 1fr; } }
     .vendor-sidebar { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 0; }
-    .vendor-sidebar-title { font-size: 13px; font-weight: 700; color: var(--gray-2); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 20px 12px; border-bottom: 1px solid var(--gray-4); margin-bottom: 8px; }
-    .vendor-nav { list-style: none; }
+    {% include "vendors/_styles_sidebar.html" %}
+
     .vendor-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--dark); text-decoration: none; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
-    .vendor-nav li a:hover, .vendor-nav li a.active { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
-    .vendor-nav svg { width: 20px; height: 20px; color: currentColor; }
     
     .vendor-content { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; }
-    .vendor-content h1 { font-size: 24px; font-weight: 800; color: var(--dark); margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--gray-4); }
+    {% include "vendors/_styles_product_form.html" %}
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
     .form-group { margin-bottom: 16px; }
-    .form-group:has(textarea), .form-group.full-width { grid-column: 1 / -1; }
     
     .vendor-content label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-1); margin-bottom: 6px; }
-    .vendor-content input[type="text"], .vendor-content input[type="number"], .vendor-content input[type="url"], .vendor-content select, .vendor-content textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--gray-3); border-radius: var(--radius); font-size: 14px; font-family: var(--font); transition: border-color 0.2s, box-shadow 0.2s; background: var(--white); }
-    .vendor-content textarea { min-height: 120px; resize: vertical; }
-    .vendor-content input:focus, .vendor-content select:focus, .vendor-content textarea:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-light); }
-    
-    .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-    .checkbox-group input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; }
-    .checkbox-group label { margin-bottom: 0; font-size: 15px; cursor: pointer; }
 
     /* ── СТИЛІ ДЛЯ ДИНАМІЧНИХ ХАРАКТЕРИСТИК ── */
     .property-row {
@@ -43,14 +33,6 @@
         cursor: pointer; display: flex; align-items: center; justify-content: center;
         transition: background 0.2s; flex-shrink: 0;
     }
-    .btn-remove-prop:hover { background: #ffcdd2; }
-    .btn-add-prop {
-        background: var(--gray-4); color: var(--dark); border: none; 
-        padding: 10px 16px; border-radius: var(--radius); font-weight: 600; 
-        cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
-        transition: background 0.2s;
-    }
-    .btn-add-prop:hover { background: var(--gray-3); }
 
     .errorlist { color: var(--red); font-size: 12px; list-style: none; padding: 0; margin: 6px 0 0 0; }
     .non-field-errors { background-color: #ffebee; color: #c62828; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--red); font-size: 14px; }
@@ -101,35 +83,7 @@
 
 {% block content %}
 <div class="vendor-wrapper">
-    <aside class="vendor-sidebar">
-        <div class="vendor-sidebar-title">Seller Hub</div>
-        <ul class="vendor-nav">
-            <li>
-                <a href="{% url 'vendor_view' %}" class="active">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                    Мої товари
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'vendor_orders' %}">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Замовлення
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'create_product' %}">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Додати товар
-                </a>
-            </li>
-            <li style="margin-top: 16px; border-top: 1px solid var(--gray-4); padding-top: 8px;">
-                <a href="{% url 'profile' %}" style="color: var(--gray-2);">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Повернутись у профіль
-                </a>
-            </li>
-        </ul>
-    </aside>
+    {% include "vendors/_sidebar.html" with active="products" show_orders=True show_back=True %}
 
     <div class="vendor-content">
         <h1 style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
@@ -140,111 +94,7 @@
         <!-- ДОДАНО id="product-form" -->
         <form method="post" novalidate id="product-form">
             {% csrf_token %}
-
-            {% if form.non_field_errors %}
-                <div class="non-field-errors">{{ form.non_field_errors }}</div>
-            {% endif %}
-
-            <div class="form-grid">
-                {% for field in form %}
-                    {% if field.name == 'is_available' %}
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <div class="checkbox-group">
-                                {{ field }}
-                                {{ field.label_tag }}
-                            </div>
-                        </div>
-
-                    {% elif field.name == 'properties' %}
-                        <!-- ── МАГІЯ ДЛЯ ХАРАКТЕРИСТИК (JSON) ── -->
-                        <div class="form-group full-width">
-                            <label>Характеристики товару (напр. Бренд - Apple)</label>
-                            
-                            <!-- Цей div буде містити справжню джангівську textarea, але ми її сховаємо -->
-                            <div style="display: none;">
-                                {{ field }}
-                            </div>
-                            
-                            <!-- Контейнер для красивих інпутів -->
-                            <div id="dynamic-properties-container">
-                                <!-- Сюди JS буде додавати рядки -->
-                            </div>
-                            
-                            <button type="button" id="add-property-btn" class="btn-add-prop">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Додати характеристику
-                            </button>
-                            
-                            {% if field.errors %}
-                                <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                            {% endif %}
-                        </div>
-
-                    {% else %}
-                        <div class="form-group">
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% if field.errors %}
-                                <ul class="errorlist">
-                                    {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
-                                </ul>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                {% endfor %}
-                <div class="form-group full-width">
-                    <label>Зображення товару (Вставте посилання на фотографії)</label>
-                    
-                    <!-- Обов'язкова штука для Django FormSets -->
-                    {{ formset.management_form }}
-                    
-                    <div id="image-formset-container">
-                        <!-- Рендеримо вже існуючі поля (при редагуванні або якщо була помилка валідації) -->
-                        {% for img_form in formset %}
-                            <div class="image-row property-row">
-                                <!-- Приховані поля (ID фотографії) -->
-                                {% for hidden in img_form.hidden_fields %}
-                                    {{ hidden }}
-                                {% endfor %}
-                                
-                                {{ img_form.image_url }}
-                                
-                                <!-- Чекбокс видалення від Django (ховаємо його, керуємо через JS) -->
-                                <div style="display: none;" class="delete-checkbox-wrapper">
-                                    {{ img_form.DELETE }}
-                                </div>
-                                
-                                <button type="button" class="btn-remove-prop btn-remove-img" title="Видалити">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
-                            </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <button type="button" id="add-image-btn" class="btn-add-prop" style="margin-top: 8px;">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Додати ще одне фото
-                    </button>
-
-                    <!-- Пустий шаблон, який JS буде клонувати при натисканні "Додати ще одне фото" -->
-                    <div id="empty-image-form" style="display: none;">
-                        <div class="image-row property-row">
-                            {% for hidden in formset.empty_form.hidden_fields %}
-                                {{ hidden }}
-                            {% endfor %}
-                            {{ formset.empty_form.image_url }}
-                            
-                            <div style="display: none;" class="delete-checkbox-wrapper">
-                                {{ formset.empty_form.DELETE }}
-                            </div>
-                            
-                            <button type="button" class="btn-remove-prop btn-remove-img" title="Видалити">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% include "vendors/_product_form_fields.html" %}
 
             <button type="submit" class="btn-save">Зберегти зміни</button>
         </form>
@@ -254,143 +104,6 @@
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const container = document.getElementById('dynamic-properties-container');
-        const addBtn = document.getElementById('add-property-btn');
-        // Знаходимо справжню textarea, яку згенерував Django (зазвичай name="properties")
-        const actualTextarea = document.querySelector('textarea[name="properties"]');
-
-        // ==========================================
-        // ЛОГІКА ДЛЯ ФОТОГРАФІЙ (FORMSET)
-        // ==========================================
-        const imageContainer = document.getElementById('image-formset-container');
-        const addImageBtn = document.getElementById('add-image-btn');
-        const emptyImageFormHtml = document.getElementById('empty-image-form').innerHTML;
-        
-        // Знаходимо поле TOTAL_FORMS (його генерує Django management_form)
-        const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]');
-
-        // Функція для налаштування кнопки "Видалити" для кожного рядка
-        function bindImageRemoveEvent(row) {
-            const removeBtn = row.querySelector('.btn-remove-img');
-            removeBtn.addEventListener('click', function() {
-                // Замість того, щоб видаляти елемент з HTML (що зламає індекси Django),
-                // ми просто ховаємо його і відмічаємо чекбокс DELETE
-                row.style.display = 'none';
-                const deleteCheckbox = row.querySelector('.delete-checkbox-wrapper input[type="checkbox"]');
-                if (deleteCheckbox) {
-                    deleteCheckbox.checked = true; // Кажемо Django видалити це з БД
-                } else {
-                    // Якщо чекбоксу немає (це нове поле, ще не збережене), просто очищаємо його
-                    const urlInput = row.querySelector('input[type="url"]');
-                    if(urlInput) urlInput.value = '';
-                }
-            });
-            
-            // Робимо placeholder красивим
-            const input = row.querySelector('input[type="url"]');
-            if(input && !input.placeholder) {
-                input.placeholder = "https://example.com/image.jpg";
-            }
-        }
-
-        // Вішаємо події на ті фото, що вже відрендерились (при редагуванні)
-        imageContainer.querySelectorAll('.image-row').forEach(bindImageRemoveEvent);
-
-        // Додавання нового поля для фото
-        addImageBtn.addEventListener('click', function() {
-            const currentFormCount = parseInt(totalFormsInput.value);
-            
-            // Django використовує __prefix__ у empty_form. Замінюємо його на поточний індекс.
-            const newFormHtml = emptyImageFormHtml.replace(/__prefix__/g, currentFormCount);
-            
-            // Створюємо новий елемент і додаємо в контейнер
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = newFormHtml;
-            const newRow = tempDiv.firstElementChild;
-            
-            imageContainer.appendChild(newRow);
-            bindImageRemoveEvent(newRow);
-            
-            // Оновлюємо лічильник для Django
-            totalFormsInput.value = currentFormCount + 1;
-        });
-        function addRow(key = '', value = '') {
-            const row = document.createElement('div');
-            row.className = 'property-row';
-            row.innerHTML = `
-                <input type="text" class="prop-key" placeholder="Назва (напр. Колір)" value="${key}">
-                <input type="text" class="prop-value" placeholder="Значення (напр. Чорний)" value="${value}">
-                <button type="button" class="btn-remove-prop" title="Видалити">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            `;
-            // Обробник видалення
-            row.querySelector('.btn-remove-prop').addEventListener('click', function() {
-                row.remove();
-            });
-            container.appendChild(row);
-        }
-
-        // 1. При завантаженні сторінки перевіряємо, чи є вже дані в textarea
-        // При редагуванні товару тут точно буде лежати старий JSON!
-        if (actualTextarea && actualTextarea.value.trim() !== '') {
-            try {
-                // В Django JSONField іноді може віддавати вже форматований текст, але JSON.parse має справитися
-                // Якщо приходять одинарні лапки замість подвійних - іноді потрібен regex, але стандартний JSONField дає подвійні.
-                let rawValue = actualTextarea.value;
-                
-                // Легкий фікс на випадок, якщо Django віддав Python-словник з одинарними лапками
-                if (rawValue.startsWith("{") && rawValue.includes("'")) {
-                    rawValue = rawValue.replace(/'/g, '"');
-                }
-
-                const existingData = JSON.parse(rawValue);
-                
-                // Якщо це правильний JSON, малюємо для кожного ключа окремий рядок
-                const entries = Object.entries(existingData);
-                if (entries.length > 0) {
-                    for (const [k, v] of entries) {
-                        addRow(k, v);
-                    }
-                } else {
-                    addRow(); // Якщо словник порожній
-                }
-            } catch(e) {
-                console.error("Помилка парсингу характеристик:", e);
-                addRow();
-            }
-        } else {
-            // Якщо пусто, малюємо один порожній рядок
-            addRow();
-        }
-
-        // 2. Обробник кнопки "Додати"
-        addBtn.addEventListener('click', function() {
-            addRow();
-        });
-
-        // 3. ПЕРЕД ВІДПРАВКОЮ ФОРМИ: збираємо дані з красивих інпутів і пакуємо в textarea
-        const form = document.getElementById('product-form');
-        form.addEventListener('submit', function() {
-            const rows = container.querySelectorAll('.property-row');
-            const propertiesObj = {};
-            
-            rows.forEach(row => {
-                const k = row.querySelector('.prop-key').value.trim();
-                const v = row.querySelector('.prop-value').value.trim();
-                // Додаємо в об'єкт тільки якщо ключ не порожній
-                if (k) {
-                    propertiesObj[k] = v;
-                }
-            });
-
-            // Серіалізуємо об'єкт у JSON рядок
-            const finalJsonString = JSON.stringify(propertiesObj);
-            
-            // Якщо об'єкт порожній, передаємо порожній рядок
-            actualTextarea.value = Object.keys(propertiesObj).length === 0 ? '' : finalJsonString;
-        });
-    });
+{% include "vendors/_product_form_js.html" with edit_mode=True %}
 </script>
 {% endblock %}

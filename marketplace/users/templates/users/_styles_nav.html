@@ -1,0 +1,41 @@
+/* Спільні стилі: orders.html, profile.html, wishlist.html */
+.profile-user-info {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--gray-4);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.profile-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 4px;
+}
+
+.profile-phone {
+    font-size: 13px;
+    color: var(--gray-2);
+}
+
+.profile-nav {
+    list-style: none;
+    padding: 12px 0;
+}
+
+.profile-nav li a:hover, .profile-nav li button:hover {
+    background: var(--gray-5);
+    color: var(--green);
+}
+
+.profile-nav li a.active {
+    background: var(--green-light);
+    color: var(--green-dark);
+    border-left: 3px solid var(--green);
+    padding-left: 17px;
+}
+
+.profile-nav li a:hover svg, .profile-nav li a.active svg {
+    color: var(--green);
+}

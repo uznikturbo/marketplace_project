@@ -1,0 +1,78 @@
+/* Спільні стилі: create_product.html, edit_product.html */
+.vendor-content h1 {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--dark);
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--gray-4);
+}
+
+.form-group:has(textarea), .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.vendor-content input[type="text"], .vendor-content input[type="number"], .vendor-content input[type="url"], .vendor-content select, .vendor-content textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--gray-3);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: var(--font);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--white);
+}
+
+.vendor-content textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.vendor-content input:focus, .vendor-content select:focus, .vendor-content textarea:focus {
+    outline: none;
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-light);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.checkbox-group input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--green);
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.btn-remove-prop:hover {
+    background: #ffcdd2;
+}
+
+.btn-add-prop {
+    background: var(--gray-4);
+    color: var(--dark);
+    border: none;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+.btn-add-prop:hover {
+    background: var(--gray-3);
+}

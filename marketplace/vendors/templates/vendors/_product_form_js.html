@@ -1,0 +1,141 @@
+{% comment %}
+Спільна логіка форми товару (створення та редагування):
+- динамічні характеристики (Key/Value) у JSON-полі `properties`;
+- formset фотографій (додавання/видалення рядків).
+
+Параметр edit_mode — вмикає розбір уже збережених характеристик
+(редагування товару).
+{% endcomment %}
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('dynamic-properties-container');
+        const addBtn = document.getElementById('add-property-btn');
+        // Знаходимо справжню textarea, яку згенерував Django (зазвичай name="properties")
+        const actualTextarea = document.querySelector('textarea[name="properties"]');
+        const imageContainer = document.getElementById('image-formset-container');
+        const addImageBtn = document.getElementById('add-image-btn');
+        const emptyImageFormHtml = document.getElementById('empty-image-form').innerHTML;
+
+        // Знаходимо поле TOTAL_FORMS (його генерує Django management_form)
+        const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]');
+
+        // Функція для налаштування кнопки "Видалити" для кожного рядка
+        function bindImageRemoveEvent(row) {
+            const removeBtn = row.querySelector('.btn-remove-img');
+            removeBtn.addEventListener('click', function() {
+                // Замість того, щоб видаляти елемент з HTML (що зламає індекси Django),
+                // ми просто ховаємо його і відмічаємо чекбокс DELETE
+                row.style.display = 'none';
+                const deleteCheckbox = row.querySelector('.delete-checkbox-wrapper input[type="checkbox"]');
+                if (deleteCheckbox) {
+                    deleteCheckbox.checked = true; // Кажемо Django видалити це з БД
+                } else {
+                    // Якщо чекбоксу немає (це нове поле, ще не збережене), просто очищаємо його
+                    const urlInput = row.querySelector('input[type="url"]');
+                    if(urlInput) urlInput.value = '';
+                }
+            });
+
+            // Робимо placeholder красивим
+            const input = row.querySelector('input[type="url"]');
+            if(input && !input.placeholder) {
+                input.placeholder = "https://example.com/image.jpg";
+            }
+        }
+
+        // Вішаємо події на ті фото, що вже відрендерились (при редагуванні)
+        imageContainer.querySelectorAll('.image-row').forEach(bindImageRemoveEvent);
+
+        // Додавання нового поля для фото
+        addImageBtn.addEventListener('click', function() {
+            const currentFormCount = parseInt(totalFormsInput.value);
+
+            // Django використовує __prefix__ у empty_form. Замінюємо його на поточний індекс.
+            const newFormHtml = emptyImageFormHtml.replace(/__prefix__/g, currentFormCount);
+
+            // Створюємо новий елемент і додаємо в контейнер
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = newFormHtml;
+            const newRow = tempDiv.firstElementChild;
+
+            imageContainer.appendChild(newRow);
+            bindImageRemoveEvent(newRow);
+
+            // Оновлюємо лічильник для Django
+            totalFormsInput.value = currentFormCount + 1;
+        });
+
+        // Функція для створення нового рядка Key/Value
+        function addRow(key = '', value = '') {
+            const row = document.createElement('div');
+            row.className = 'property-row';
+            row.innerHTML = `
+                <input type="text" class="prop-key" placeholder="Назва (напр. Колір)" value="${key}">
+                <input type="text" class="prop-value" placeholder="Значення (напр. Чорний)" value="${value}">
+                <button type="button" class="btn-remove-prop" title="Видалити">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            `;
+            // Обробник видалення
+            row.querySelector('.btn-remove-prop').addEventListener('click', function() {
+                row.remove();
+            });
+            container.appendChild(row);
+        }
+
+        // 1. При завантаженні сторінки перевіряємо, чи є вже дані в textarea
+        // Це важливо для редагування товару або якщо форма повернула помилку валідації
+        if (actualTextarea && actualTextarea.value.trim() !== '') {
+            try {
+                {% if edit_mode %}
+                // При редагуванні Django може віддати Python-словник з одинарними лапками
+                let rawValue = actualTextarea.value;
+                if (rawValue.startsWith("{") && rawValue.includes("'")) {
+                    rawValue = rawValue.replace(/'/g, '"');
+                }
+                const existingData = JSON.parse(rawValue);
+                {% else %}
+                const existingData = JSON.parse(actualTextarea.value);
+                {% endif %}
+                const entries = Object.entries(existingData);
+                if (entries.length > 0) {
+                    for (const [k, v] of entries) {
+                        addRow(k, v);
+                    }
+                }{% if edit_mode %} else {
+                    addRow(); // Якщо словник порожній
+                }{% endif %}
+            } catch(e) {
+                {% if edit_mode %}console.error("Помилка парсингу характеристик:", e);{% endif %}
+                addRow();
+            }
+        } else {
+            addRow();
+        }
+
+        // 2. Обробник кнопки "Додати"
+        addBtn.addEventListener('click', function() {
+            addRow();
+        });
+
+        // 3. ПЕРЕД ВІДПРАВКОЮ ФОРМИ: збираємо дані з красивих інпутів і пакуємо в textarea
+        const form = document.getElementById('product-form');
+        form.addEventListener('submit', function() {
+            const rows = container.querySelectorAll('.property-row');
+            const propertiesObj = {};
+
+            rows.forEach(row => {
+                const k = row.querySelector('.prop-key').value.trim();
+                const v = row.querySelector('.prop-value').value.trim();
+                // Додаємо в об'єкт тільки якщо ключ не порожній
+                if (k) {
+                    propertiesObj[k] = v;
+                }
+            });
+
+            // Серіалізуємо об'єкт у JSON рядок
+            const finalJsonString = JSON.stringify(propertiesObj);
+
+            // Якщо об'єкт порожній (немає характеристик), передаємо порожній рядок
+            actualTextarea.value = Object.keys(propertiesObj).length === 0 ? '' : finalJsonString;
+        });
+    });

@@ -1,0 +1,31 @@
+{% comment %}
+Спільний сайдбар профілю: картка користувача + навігація.
+Параметр active — "profile" | "orders" | "wishlist".
+{% endcomment %}
+<aside class="profile-sidebar">
+        <div class="profile-user-info">
+            <!-- Виводимо першу літеру імені або номеру -->
+            <div class="profile-avatar">
+                {% if user.first_name %}
+                    {{ user.first_name|first|upper }}
+                {% else %}
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                {% endif %}
+            </div>
+            <div>
+                <div class="profile-name">
+                    {% if user.first_name or user.last_name %}
+                        {{ user.first_name }} {{ user.last_name }}
+                    {% else %}
+                        Користувач
+                    {% endif %}
+                </div>
+                <div class="profile-phone">{{ user.number }}</div>
+            </div>
+        </div>
+        
+        {% include "users/_profile_nav.html" %}
+    </aside>

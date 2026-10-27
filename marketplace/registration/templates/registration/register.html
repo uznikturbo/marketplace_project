@@ -30,13 +30,8 @@
     .form-group {
         margin-bottom: 16px;
     }
-    .auth-card label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--gray-1);
-        margin-bottom: 6px;
-    }
+    {% include "registration/_styles_auth.html" %}
+
     .auth-card input[type="text"],
     .auth-card input[type="password"],
     .auth-card input[type="tel"],
@@ -48,11 +43,6 @@
         font-size: 15px;
         font-family: var(--font);
         transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .auth-card input:focus {
-        outline: none;
-        border-color: var(--green);
-        box-shadow: 0 0 0 3px var(--green-light);
     }
 
     .auth-card .errorlist {
@@ -71,37 +61,11 @@
         font-size: 13px;
         border: 1px solid var(--red);
     }
-
-    .auth-btn {
-        width: 100%;
-        background: var(--green);
-        color: var(--white);
-        border: none;
-        padding: 14px;
-        font-size: 16px;
-        font-weight: 600;
-        border-radius: var(--radius);
-        cursor: pointer;
-        margin-top: 12px;
-        transition: background 0.2s;
-        font-family: var(--font);
-    }
-    .auth-btn:hover {
-        background: var(--green-dark);
-    }
     .auth-links {
         margin-top: 24px;
         text-align: center;
         font-size: 14px;
         color: var(--gray-2);
-    }
-    .auth-links a {
-        color: var(--green);
-        text-decoration: none;
-        font-weight: 600;
-    }
-    .auth-links a:hover {
-        text-decoration: underline;
     }
 
     /* ── ДИНАМІЧНІ ВИМОГИ ДО ПАРОЛЯ ── */

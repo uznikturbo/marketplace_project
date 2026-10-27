@@ -24,13 +24,8 @@
         box-shadow: var(--shadow);
         overflow: hidden;
     }
-    .profile-user-info {
-        padding: 24px 20px;
-        border-bottom: 1px solid var(--gray-4);
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
+    {% include "users/_styles_nav.html" %}
+
     .profile-avatar {
         width: 56px;
         height: 56px;
@@ -44,20 +39,6 @@
         font-weight: 700;
         text-transform: uppercase;
         flex-shrink: 0;
-    }
-    .profile-name {
-        font-size: 16px;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 4px;
-    }
-    .profile-phone {
-        font-size: 13px;
-        color: var(--gray-2);
-    }
-    .profile-nav {
-        list-style: none;
-        padding: 12px 0;
     }
     .profile-nav li a, .profile-nav li button {
         display: flex;
@@ -76,24 +57,11 @@
         cursor: pointer;
         font-family: inherit;
     }
-    .profile-nav li a:hover, .profile-nav li button:hover {
-        background: var(--gray-5);
-        color: var(--green);
-    }
-    .profile-nav li a.active {
-        background: var(--green-light);
-        color: var(--green-dark);
-        border-left: 3px solid var(--green);
-        padding-left: 17px;
-    }
     .profile-nav svg {
         width: 20px;
         height: 20px;
         color: var(--gray-3);
         transition: color 0.2s;
-    }
-    .profile-nav li a:hover svg, .profile-nav li a.active svg {
-        color: var(--green);
     }
 
     /* ── ОСНОВНИЙ КОНТЕНТ ── */
@@ -374,68 +342,7 @@
 {% block content %}
 <div class="profile-wrapper">
 
-    <aside class="profile-sidebar">
-        <div class="profile-user-info">
-            <div class="profile-avatar">
-                {% if user.first_name %}
-                    {{ user.first_name|first|upper }}
-                {% else %}
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                {% endif %}
-            </div>
-            <div>
-                <div class="profile-name">
-                    {% if user.first_name or user.last_name %}
-                        {{ user.first_name }} {{ user.last_name }}
-                    {% else %}
-                        Користувач
-                    {% endif %}
-                </div>
-                <div class="profile-phone">{{ user.number }}</div>
-            </div>
-        </div>
-
-        <ul class="profile-nav">
-            <li>
-                <a href="{% url 'profile' %}">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    Особисті дані
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'profile_orders' %}" class="active">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                    Мої замовлення
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'profile_wishlist' %}">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    Список бажань
-                </a>
-            </li>
-            {% if user.is_vendor %}
-            <li>
-                <a href="{% url 'vendor_view' %}">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM12 8v8m-4-4h8"/></svg>
-                    Кабінет продавця
-                </a>
-            </li>
-            {% endif %}
-            <li style="border-top: 1px solid var(--gray-4); margin-top: 8px; padding-top: 8px;">
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                        Вийти з акаунта
-                    </button>
-                </form>
-            </li>
-        </ul>
-    </aside>
+    {% include "users/_profile_sidebar.html" with active="orders" %}
 
     <section class="profile-content">
         <h1>Мої замовлення</h1>

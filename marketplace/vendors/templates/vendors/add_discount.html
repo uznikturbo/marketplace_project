@@ -9,11 +9,9 @@
     
     /* ── САЙДБАР ПРОДАВЦЯ ── */
     .vendor-sidebar { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 0; }
-    .vendor-sidebar-title { font-size: 13px; font-weight: 700; color: var(--gray-2); text-transform: uppercase; letter-spacing: 0.5px; padding: 0 20px 12px; border-bottom: 1px solid var(--gray-4); margin-bottom: 8px; }
-    .vendor-nav { list-style: none; }
+    {% include "vendors/_styles_sidebar.html" %}
+
     .vendor-nav li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--dark); text-decoration: none; transition: background 0.2s, color 0.2s; border-left: 3px solid transparent; }
-    .vendor-nav li a:hover, .vendor-nav li a.active { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
-    .vendor-nav svg { width: 20px; height: 20px; color: currentColor; }
     
     /* ── ОСНОВНИЙ КОНТЕНТ ── */
     .vendor-content { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; }
@@ -90,29 +88,7 @@
 <div class="vendor-wrapper">
     
     <!-- САЙДБАР -->
-    <aside class="vendor-sidebar">
-        <div class="vendor-sidebar-title">Seller Hub</div>
-        <ul class="vendor-nav">
-            <li>
-                <a href="{% url 'vendor_view' %}" class="active">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                    Мої товари
-                </a>
-            </li>
-            <li>
-                <a href="{% url 'create_product' %}">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Додати товар
-                </a>
-            </li>
-            <li style="margin-top: 16px; border-top: 1px solid var(--gray-4); padding-top: 8px;">
-                <a href="{% url 'profile' %}" style="color: var(--gray-2);">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Повернутись у профіль
-                </a>
-            </li>
-        </ul>
-    </aside>
+    {% include "vendors/_sidebar.html" with active="products" show_orders=False show_back=True %}
 
     <!-- КОНТЕНТ -->
     <div class="vendor-content">
