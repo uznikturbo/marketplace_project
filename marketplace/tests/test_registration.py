@@ -123,6 +123,17 @@ class LoginTests(BaseTestCase):
 
         self.assertEqual(response.context["next"], reverse("catalog"))
 
+    def test_login_form_does_not_submit_literal_none_as_next(self):
+        response = self.client.get(reverse("login"))
+
+        self.assertContains(response, 'name="next" value=""')
+        self.assertNotContains(response, 'name="next" value="None"')
+
+    def test_literal_none_next_redirects_home(self):
+        response = self._login(next="None")
+
+        self.assertRedirects(response, reverse("home"))
+
     def test_invalid_password_is_rejected(self):
         response = self._login(password="wrong-password")
 

@@ -290,8 +290,10 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **182 tests** and does not require Redis: it switches to
-an in-memory cache and a fast password hasher.
+The suite contains **196 tests**: 184 unit/integration tests and 12 browser
+end-to-end tests. It does not require Redis: it switches to an in-memory cache
+and a fast password hasher. Browser tests need Playwright (see below); without
+it they are skipped.
 
 ```bash
 cd marketplace
@@ -324,9 +326,33 @@ Test modules:
 | `tests/test_registration.py` | Registration, login and `next` safety, SMS task behavior            |
 | `tests/test_core.py`       | Home page, health check, favicon, timezone middleware                  |
 | `tests/test_secret_rotation.py` | Secret key file creation, permissions, task and management command |
+| `tests/test_ui.py`         | Playwright/Firefox: home, catalog, cart, login, profile, vendor form   |
 
 > The test database is created and destroyed automatically. The database
 > user therefore needs the `CREATEDB` privilege.
+
+### Browser (UI) tests
+
+The UI suite drives headless **Firefox** through Playwright and checks the
+rendered HTML, inline CSS and inline JavaScript together.
+
+```bash
+pip install -r requirements-dev.txt
+python -m playwright install firefox
+
+cd marketplace
+python manage.py test tests.test_ui
+```
+
+Run only the fast unit/integration suite (skips the browser tests):
+
+```bash
+python manage.py test --exclude-tag=ui
+```
+
+If Playwright or its Firefox build is missing, the UI tests are skipped. Set
+`UI_TESTS_REQUIRED=1` to turn that skip into a failure; CI uses this to make
+sure the browser suite really runs.
 
 ---
 
