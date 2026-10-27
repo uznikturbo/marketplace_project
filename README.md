@@ -20,6 +20,7 @@ build step.
 - [Getting started](#getting-started)
 - [Environment variables](#environment-variables)
 - [Running the tests](#running-the-tests)
+- [Linting and coverage](#linting-and-coverage)
 - [How the main flows work](#how-the-main-flows-work)
 - [Secret key rotation](#secret-key-rotation)
 - [Security notes](#security-notes)
@@ -184,7 +185,8 @@ pip install -r requirements-dev.txt
 ```
 
 `requirements.txt` contains runtime dependencies only; `requirements-dev.txt`
-adds the Debug Toolbar and Playwright for local development and tests.
+adds the Debug Toolbar, Playwright, Ruff and coverage for local development,
+linting and tests.
 
 ### 2. Configure the environment
 
@@ -315,7 +317,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **203 tests**: 190 unit/integration tests and 13 browser
+The suite contains **208 tests**: 195 unit/integration tests and 13 browser
 end-to-end tests. It does not require Redis: `marketplace.settings.test`
 switches to an in-memory cache and a fast password hasher. Browser tests need
 Playwright (see below); without it they are skipped.
@@ -378,6 +380,26 @@ python manage.py test --exclude-tag=ui
 If Playwright or its Firefox build is missing, the UI tests are skipped. Set
 `UI_TESTS_REQUIRED=1` to turn that skip into a failure; CI uses this to make
 sure the browser suite really runs.
+
+### Linting and coverage
+
+Ruff and coverage are configured in `marketplace/pyproject.toml` and installed
+by `requirements-dev.txt`.
+
+```bash
+cd marketplace
+
+# lint
+ruff check .
+
+# unit/integration tests with branch coverage
+coverage run manage.py test --exclude-tag=ui
+coverage report
+```
+
+Coverage fails below 88% (`fail_under` in `pyproject.toml`). The HTML report is
+available with `coverage html` (`htmlcov/` is gitignored). CI runs both `ruff`
+and the coverage command on every push and pull request.
 
 ---
 

@@ -7,3 +7,7 @@ django-debug-toolbar==6.3.0
 
 # Browser end-to-end tests (tests/test_ui.py)
 playwright==1.64.1
+
+# Linting and test coverage (configured in marketplace/pyproject.toml)
+ruff==0.17.3
+coverage==7.17.0

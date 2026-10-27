@@ -5,4 +5,4 @@ class RegistrationConfig(AppConfig):
     name = "registration"
 
     def ready(self):
-        import registration.signals
+        import registration.signals  # noqa: F401

@@ -1,8 +1,7 @@
-from django.shortcuts import render
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.forms import AuthenticationForm
+from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import CustomUserCreationForm

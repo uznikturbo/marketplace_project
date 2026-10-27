@@ -1,21 +1,24 @@
-from decimal import Decimal
-from django.db import transaction
-from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
-from django.contrib import messages
-from .models import Order, OrderItem, PaymentMethod, PaymentStatus
-from .forms import OrderCreateForm
 import base64
 import hashlib
 import json
 import logging
-from django.conf import settings
+import time
+from decimal import Decimal
+
 import requests
-from django.http import JsonResponse
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+
 from catalog.models import Product
 from catalog.utils import get_cart
-import time
+
+from .forms import OrderCreateForm
+from .models import Order, OrderItem, PaymentMethod, PaymentStatus
 
 logger = logging.getLogger(__name__)
 

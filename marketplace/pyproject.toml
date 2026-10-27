@@ -1,0 +1,36 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = [
+    "*/migrations/*",
+    "staticfiles",
+]
+
+[tool.ruff.lint]
+# Start with the safe, high-signal rules: pycodestyle errors, pyflakes,
+# and import sorting. Add more rule families deliberately over time.
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Settings modules intentionally use `from .base import *`.
+"marketplace/settings/*.py" = ["F405"]
+
+[tool.coverage.run]
+source = ["."]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/tests.py",
+    "manage.py",
+    "marketplace/settings/*",
+    "marketplace/wsgi.py",
+    "marketplace/asgi.py",
+    "marketplace/celery.py",
+    "*/apps.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 88

@@ -1,6 +1,7 @@
 from django import forms
-from catalog.models import Product, ProductImage, ProductDiscount
 from django.forms import inlineformset_factory
+
+from catalog.models import Product, ProductDiscount, ProductImage
 
 
 class CreateProductForm(forms.ModelForm):
