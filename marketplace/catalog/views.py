@@ -13,12 +13,22 @@ from .models import CartItem
 from .utils import get_all_subcategories_ids, get_favorite_ids, get_user_cart
 
 CATALOG_PAGE_SIZE = 12
+CATALOG_DEFAULT_SORT = "popular"
+CATALOG_SORT_OPTIONS = {
+    "popular": ("-annotated_ratings_count", "-created_at"),
+    "price_asc": ("price", "-created_at"),
+    "price_desc": ("-price", "-created_at"),
+    "newest": ("-created_at",),
+}
 
 
 # Create your views here.
 def catalog_view(request):
     query = request.GET.get("q")
     raw_category_id = request.GET.get("category")
+    sort = request.GET.get("sort", CATALOG_DEFAULT_SORT)
+    if sort not in CATALOG_SORT_OPTIONS:
+        sort = CATALOG_DEFAULT_SORT
 
     current_category_id = None
     if raw_category_id:
@@ -40,7 +50,7 @@ def catalog_view(request):
             annotated_avg_rating=Avg("ratings__rating"),
             annotated_ratings_count=Count("ratings"),
         )
-        .order_by("-created_at")
+        .order_by(*CATALOG_SORT_OPTIONS[sort])
     )
 
     if query:
@@ -78,6 +88,7 @@ def catalog_view(request):
             "categories": categories,
             "query": query,
             "current_category_id": current_category_id,
+            "sort": sort,
             "user_favorite_ids": get_favorite_ids(request),
         },
     )

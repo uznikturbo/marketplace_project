@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.urls import reverse
 
 from catalog.models import Cart, CartItem, Favorite, ProductRating
@@ -467,3 +469,60 @@ class WishlistPaginationTests(BaseTestCase):
         self.assertEqual(first.context["page_obj"].paginator.count, 13)
         self.assertEqual(len(second.context["products"]), 1)
         self.assertContains(first, 'class="pagination"')
+
+
+class CatalogSortingTests(BaseTestCase):
+    def test_sorts_by_price_ascending(self):
+        make_product(name="Expensive", price=Decimal("500.00"))
+        make_product(name="Cheap", price=Decimal("50.00"))
+
+        response = self.client.get(reverse("catalog"), {"sort": "price_asc"})
+
+        names = [product.name for product in response.context["products"]]
+        self.assertEqual(names, ["Cheap", "Expensive"])
+
+    def test_sorts_by_price_descending(self):
+        make_product(name="Cheap", price=Decimal("50.00"))
+        make_product(name="Expensive", price=Decimal("500.00"))
+
+        response = self.client.get(reverse("catalog"), {"sort": "price_desc"})
+
+        names = [product.name for product in response.context["products"]]
+        self.assertEqual(names, ["Expensive", "Cheap"])
+
+    def test_sorts_by_newest(self):
+        make_product(name="Older")
+        make_product(name="Newer")
+
+        response = self.client.get(reverse("catalog"), {"sort": "newest"})
+
+        names = [product.name for product in response.context["products"]]
+        self.assertEqual(names, ["Newer", "Older"])
+
+    def test_sorts_by_popularity(self):
+        popular = make_product(name="Popular")
+        make_product(name="Unrated")
+        user = make_user()
+        ProductRating.objects.create(product=popular, user=user, rating=5)
+
+        response = self.client.get(reverse("catalog"), {"sort": "popular"})
+
+        self.assertEqual(response.context["products"][0].name, "Popular")
+
+    def test_unknown_sort_falls_back_to_default(self):
+        make_product(name="Any product")
+
+        response = self.client.get(reverse("catalog"), {"sort": "bogus"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["sort"], "popular")
+
+    def test_pagination_keeps_sort_parameter(self):
+        for i in range(13):
+            make_product(name=f"Sorted product {i:02d}", price=Decimal("100.00"))
+
+        response = self.client.get(
+            reverse("catalog"), {"sort": "price_asc", "page": 2}
+        )
+
+        self.assertContains(response, "sort=price_asc&amp;page=1")

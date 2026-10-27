@@ -46,7 +46,7 @@
         transition: background .15s;
     }
     .cat-item-wrapper:hover { background: var(--gray-5); }
-    
+
     /* Загальний стиль для всіх посилань */
     .cat-link {
         flex: 1;
@@ -67,7 +67,7 @@
     /* Відступи для різних рівнів */
     .cat-link-lvl1 { padding: 11px 18px; font-size: 14px; font-weight: 600; border-left: none; }
     .cat-link-lvl1.active { background: transparent; color: var(--green); } /* 1 рівень без зеленого фону */
-    
+
     .cat-link-lvl2 { padding: 8px 18px 8px 32px; font-size: 13px; font-weight: 500; color: var(--gray-1); }
     .cat-link-lvl3 { padding: 8px 18px 8px 46px; font-size: 13px; font-weight: 400; color: var(--gray-2); }
 
@@ -107,6 +107,7 @@
     .toolbar-left strong { color: var(--dark); font-weight: 700; }
     .toolbar-right { display: flex; align-items: center; gap: 10px; }
 
+    .sort-form { margin: 0; }
     .sort-select {
         border: 1px solid var(--gray-4);
         border-radius: 6px;
@@ -140,6 +141,16 @@
         grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         gap: 16px;
     }
+    .products-grid.list-view { grid-template-columns: 1fr; }
+    .products-grid.list-view .product-card { flex-direction: row; }
+    .products-grid.list-view .card-img {
+        width: 210px; min-width: 210px; aspect-ratio: auto;
+        border-bottom: none; border-right: 1px solid var(--gray-4);
+    }
+    .products-grid.list-view .card-body { padding: 18px; }
+    .products-grid.list-view .card-name { -webkit-line-clamp: 3; }
+    .products-grid.list-view .card-rating-row { margin-top: 0; }
+    .products-grid.list-view .card-footer { margin-top: auto; }
     {% include "catalog/_styles_product_card.html" %}
 
     .card-badge {
@@ -182,11 +193,26 @@
     .empty-state svg { width: 72px; height: 72px; color: var(--gray-3); margin-bottom: 16px; }
     .empty-state h3 { font-size: 20px; color: var(--gray-1); margin-bottom: 8px; }
     .empty-state p { font-size: 14px; color: var(--gray-2); }
+    .empty-state .btn-reset {
+        display: inline-block; margin-top: 18px; padding: 10px 20px;
+        background: var(--green); color: var(--white); border-radius: var(--radius);
+        font-size: 14px; font-weight: 700; text-decoration: none;
+        transition: background .2s;
+    }
+    .empty-state .btn-reset:hover { background: var(--green-dark); }
 
     {% include "core/_styles_pagination.html" %}
 
     @media (max-width: 900px) { .catalog-layout { grid-template-columns: 1fr; } .sidebar { position: static; } }
-    @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+    @media (max-width: 600px) {
+        .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .products-grid.list-view .card-img { width: 110px; min-width: 110px; padding: 10px; }
+        .products-grid.list-view .card-body { padding: 12px 44px 12px 12px; gap: 5px; }
+        .products-grid.list-view .card-category { display: none; }
+        .products-grid.list-view .card-rating-row { display: none; }
+        .products-grid.list-view .card-price { font-size: 16px; }
+        .products-grid.list-view .btn-cart { padding: 7px 10px; font-size: 12px; }
+    }
 </style>
 {% endblock %}
 
@@ -212,12 +238,20 @@
             Категорії
         </div>
         <ul class="cat-tree">
+            <li>
+                <div class="cat-item-wrapper">
+                    <a href="{% url 'catalog' %}"
+                       class="cat-link cat-link-lvl1 {% if not current_category_id %}active{% endif %}">
+                        Усі товари
+                    </a>
+                </div>
+            </li>
             {% for category in categories %}
                 {% if not category.parent %}
                     <!-- ── РІВЕНЬ 1 (Кореневі) ── -->
                     <li>
                         <div class="cat-item-wrapper">
-                            <a href="?category={{ category.id }}{% if query %}&q={{ query }}{% endif %}" 
+                            <a href="{% querystring category=category.id page=None %}"
                                class="cat-link cat-link-lvl1 {% if current_category_id == category.id %}active{% endif %}">
                                 {{ category.name }}
                             </a>
@@ -232,7 +266,7 @@
                                 {% for sub in category.subcategories.all %}
                                     <li>
                                         <div class="cat-item-wrapper">
-                                            <a href="?category={{ sub.id }}{% if query %}&q={{ query }}{% endif %}" 
+                                            <a href="{% querystring category=sub.id page=None %}"
                                                class="cat-link cat-link-lvl2 {% if current_category_id == sub.id %}active{% endif %}">
                                                 {{ sub.name }}
                                             </a>
@@ -247,7 +281,7 @@
                                             <ul class="cat-children">
                                                 {% for subsub in sub.subcategories.all %}
                                                     <li>
-                                                        <a href="?category={{ subsub.id }}{% if query %}&q={{ query }}{% endif %}" 
+                                                        <a href="{% querystring category=subsub.id page=None %}"
                                                            class="cat-link cat-link-lvl3 {% if current_category_id == subsub.id %}active{% endif %}">
                                                             {{ subsub.name }}
                                                         </a>
@@ -283,14 +317,18 @@
                 {% endif %}
             </div>
             <div class="toolbar-right">
-                <select class="sort-select">
-                    <option>За популярністю</option>
-                    <option>Від дешевих до дорогих</option>
-                    <option>Від дорогих до дешевих</option>
-                    <option>Новинки</option>
-                </select>
-                <div class="view-toggle">
-                    <button class="view-btn active" title="Сітка">
+                <form method="get" class="sort-form">
+                    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+                    {% if current_category_id %}<input type="hidden" name="category" value="{{ current_category_id }}">{% endif %}
+                    <select name="sort" class="sort-select" aria-label="Сортування товарів" onchange="this.form.submit()">
+                        <option value="popular" {% if sort == "popular" %}selected{% endif %}>За популярністю</option>
+                        <option value="price_asc" {% if sort == "price_asc" %}selected{% endif %}>Від дешевих до дорогих</option>
+                        <option value="price_desc" {% if sort == "price_desc" %}selected{% endif %}>Від дорогих до дешевих</option>
+                        <option value="newest" {% if sort == "newest" %}selected{% endif %}>Новинки</option>
+                    </select>
+                </form>
+                <div class="view-toggle" role="group" aria-label="Вигляд каталогу">
+                    <button type="button" class="view-btn active" data-view="grid" title="Сітка" aria-pressed="true">
                         <svg fill="currentColor" viewBox="0 0 16 16">
                             <rect x="1" y="1" width="6" height="6" rx="1"/>
                             <rect x="9" y="1" width="6" height="6" rx="1"/>
@@ -298,7 +336,7 @@
                             <rect x="9" y="9" width="6" height="6" rx="1"/>
                         </svg>
                     </button>
-                    <button class="view-btn" title="Список">
+                    <button type="button" class="view-btn" data-view="list" title="Список" aria-pressed="false">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 16 16">
                             <line x1="2" y1="4" x2="14" y2="4"/>
                             <line x1="2" y1="8" x2="14" y2="8"/>
@@ -311,7 +349,7 @@
 
         <!-- PRODUCTS -->
         {% if products %}
-            <div class="products-grid">
+            <div class="products-grid" id="products-grid">
                 {% for product in products %}
                 <a href="{% url 'product_detail' pk=product.pk %}" class="product-card">
 
@@ -324,13 +362,13 @@
                     {% endif %}
 
                     <!-- Зверни увагу: я додав клас active, якщо товар в обраному, і data-id -->
-                    <button class="card-wishlist fav-btn {% if product.id in user_favorite_ids %}active{% endif %}" 
-                            data-url="{% url 'toggle_favorite' product.id %}" 
+                    <button class="card-wishlist fav-btn {% if product.id in user_favorite_ids %}active{% endif %}"
+                            data-url="{% url 'toggle_favorite' product.id %}"
                             title="Додати до обраного">
-                        
+
                         <!-- Якщо в обраному - сердечко зафарбоване, якщо ні - пусте -->
-                        <svg fill="{% if product.id in user_favorite_ids %}var(--red){% else %}none{% endif %}" 
-                            stroke="{% if product.id in user_favorite_ids %}var(--red){% else %}currentColor{% endif %}" 
+                        <svg fill="{% if product.id in user_favorite_ids %}var(--red){% else %}none{% endif %}"
+                            stroke="{% if product.id in user_favorite_ids %}var(--red){% else %}currentColor{% endif %}"
                             viewBox="0 0 24 24">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                         </svg>
@@ -411,6 +449,9 @@
                 </svg>
                 <h3>Товарів не знайдено</h3>
                 <p>Спробуйте змінити фільтри або обрати іншу категорію</p>
+                {% if query or current_category_id %}
+                    <a href="{% url 'catalog' %}" class="btn-reset">Скинути фільтри</a>
+                {% endif %}
             </div>
         {% endif %}
 
@@ -435,29 +476,55 @@ function toggleSubCat(btn) {
 // Потужний скрипт для розгортання всього дерева для активної категорії!
 document.addEventListener('DOMContentLoaded', function() {
     const activeLink = document.querySelector('.cat-link.active');
-    
+
     if (activeLink) {
         // Проходимось вгору по дереву DOM і відкриваємо всі батьківські ul.cat-children
         let currentEl = activeLink;
-        
+
         while (currentEl) {
             const parentUl = currentEl.closest('.cat-children');
             if (!parentUl) break; // Дійшли до самого верху
-            
+
             // Відкриваємо знайдений список (наприклад, рівень 3 або 2)
             parentUl.classList.add('open');
-            
+
             // Знаходимо стрілочку цього списку (щоб перевернути її вниз)
             const parentWrapper = parentUl.previousElementSibling;
             if (parentWrapper) {
                 const toggleBtn = parentWrapper.querySelector('.cat-toggle');
                 if (toggleBtn) toggleBtn.classList.add('open');
             }
-            
+
             // Піднімаємось ще на рівень вище
             currentEl = parentUl.parentElement;
         }
     }
 });
+
+// Перемикач вигляду каталогу: сітка / список. Вибір зберігається між сторінками.
+document.addEventListener('DOMContentLoaded', function() {
+    const grid = document.getElementById('products-grid');
+    const buttons = document.querySelectorAll('.view-btn');
+    if (!grid || !buttons.length) return;
+
+    function setView(view) {
+        grid.classList.toggle('list-view', view === 'list');
+        buttons.forEach(btn => {
+            const active = btn.dataset.view === view;
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        try { localStorage.setItem('catalog-view', view); } catch (e) {}
+    }
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => setView(btn.dataset.view));
+    });
+
+    try {
+        if (localStorage.getItem('catalog-view') === 'list') setView('list');
+    } catch (e) {}
+});
+
 </script>
 {% endblock %}

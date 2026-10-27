@@ -640,6 +640,12 @@
                 .catch(err => console.error('Wishlist error:', err));
             });
         });
+
+        // Product cards are links; clicks on the cart form must not navigate to
+        // the product page. Stop the click before it reaches the surrounding <a>.
+        document.querySelectorAll('.product-card form').forEach(form => {
+            form.addEventListener('click', event => event.stopPropagation());
+        });
     });
 </script>
 

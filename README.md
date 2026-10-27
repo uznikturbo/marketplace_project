@@ -317,7 +317,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **208 tests**: 195 unit/integration tests and 13 browser
+The suite contains **216 tests**: 201 unit/integration tests and 15 browser
 end-to-end tests. It does not require Redis: `marketplace.settings.test`
 switches to an in-memory cache and a fast password hasher. Browser tests need
 Playwright (see below); without it they are skipped.
@@ -346,7 +346,7 @@ Test modules:
 | Module                     | What it covers                                                        |
 | -------------------------- | --------------------------------------------------------------------- |
 | `tests/test_models.py`     | Phone/e-mail normalization, uniqueness, ratings, prices, discounts, cart totals |
-| `tests/test_catalog.py`    | Catalog, search, categories, reviews, cart rules, favorites, cart merge |
+| `tests/test_catalog.py`    | Catalog, search, sorting, categories, reviews, cart rules, favorites, cart merge |
 | `tests/test_orders.py`     | Checkout, stock rollback, payments, LiqPay callback, Nova Poshta        |
 | `tests/test_users.py`      | Profile, order history, SMS send/verify limits                         |
 | `tests/test_vendors.py`    | Vendor access, product ownership, discounts, vendor orders             |

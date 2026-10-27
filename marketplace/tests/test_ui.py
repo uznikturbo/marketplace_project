@@ -213,6 +213,33 @@ class CatalogUITests(UITestCase):
         expect(self.page).to_have_url(re.compile(rf"/catalog/{product.pk}/detail/$"))
         expect(self.page.locator("h1").first).to_contain_text("Ноутбук Detail")
 
+    def test_catalog_sorting_and_list_view(self):
+        make_product(name="Дешевий товар", price="10.00")
+        make_product(name="Дорогий товар", price="100.00")
+
+        self.page.goto("/catalog/")
+        self.page.select_option('select[name="sort"]', "price_asc")
+
+        expect(self.page).to_have_url(re.compile(r"sort=price_asc"))
+        expect(self.page.locator(".products-grid .product-card").first).to_contain_text(
+            "Дешевий товар"
+        )
+
+        self.page.locator('.view-btn[data-view="list"]').click()
+        expect(self.page.locator("#products-grid")).to_have_class(
+            re.compile(r"\blist-view\b")
+        )
+
+    def test_add_to_cart_from_catalog_card(self):
+        make_product(name="Каталог Кошик", quantity=5)
+
+        self.page.goto("/catalog/")
+        card = self.page.locator(".product-card", has_text="Каталог Кошик")
+        card.locator("button.btn-cart").click()
+
+        expect(self.page).to_have_url(re.compile(r"/catalog/$"))
+        expect(self.page.locator(".messages")).to_contain_text("додано до кошика")
+
 
 @tag("ui")
 class CartUITests(UITestCase):
