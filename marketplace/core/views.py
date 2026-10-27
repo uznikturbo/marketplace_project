@@ -1,7 +1,39 @@
+import logging
+
+from django.conf import settings
+from django.core.cache import cache
+from django.db import connection
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
+
 from catalog import models as catalog_models
 from catalog.utils import get_favorite_ids
-from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
+
+
+def health_view(request):
+    """Lightweight health check for uptime probes and load balancers."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        logger.exception("Health check failed: database is unavailable")
+        return JsonResponse(
+            {"status": "error", "database": "unavailable"}, status=503
+        )
+
+    return JsonResponse({"status": "ok", "database": "ok"})
+
+
+def favicon_view(request):
+    """Serve the site icon so browsers do not hit a 404 on /favicon.ico."""
+    path = settings.BASE_DIR / "static" / "img" / "favicon.ico"
+    try:
+        return FileResponse(open(path, "rb"), content_type="image/x-icon")
+    except FileNotFoundError:
+        raise Http404("Favicon not found")
 
 
 # Create your views here.
