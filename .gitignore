@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 
+# Django secret key written by the rotation task
+.secret_key
+.secret-key-*
+
 # Python
 __pycache__/
 *.py[cod]

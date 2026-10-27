@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -46,14 +47,33 @@ def env_list(name, default=""):
 DEBUG = env_bool("DJANGO_DEBUG", False)
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
-if not SECRET_KEY:
+# The key can live in a file (used by the rotation task) or in the
+# environment. The file wins, so a rotated key takes effect after a restart.
+SECRET_KEY_FILE = Path(
+    os.getenv("DJANGO_SECRET_KEY_FILE") or BASE_DIR / ".secret_key"
+)
+
+
+def _load_secret_key():
+    if SECRET_KEY_FILE.exists():
+        key = SECRET_KEY_FILE.read_text().strip()
+        if key:
+            return key
+
+    key = os.getenv("DJANGO_SECRET_KEY", "").strip()
+    if key:
+        return key
+
     if DEBUG:
-        SECRET_KEY = "***REMOVED***"
-    else:
-        raise ImproperlyConfigured(
-            "DJANGO_SECRET_KEY is not set. Copy .env.example to .env and fill it in."
-        )
+        return "django-insecure-local-development-only"
+
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is not set and no key file exists at "
+        f"{SECRET_KEY_FILE}. Copy .env.example to .env and fill it in."
+    )
+
+
+SECRET_KEY = _load_secret_key()
 
 ALLOWED_HOSTS = env_list(
     "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.ngrok-free.app,.ngrok.io"
@@ -211,3 +231,19 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
+
+
+# SECRET KEY ROTATION
+# The key is rotated by a Celery beat task every N days. Set to 0 to disable.
+try:
+    SECRET_KEY_ROTATION_DAYS = int(os.getenv("SECRET_KEY_ROTATION_DAYS", "7"))
+except ValueError:
+    SECRET_KEY_ROTATION_DAYS = 7
+
+CELERY_BEAT_SCHEDULE = {}
+if SECRET_KEY_ROTATION_DAYS > 0:
+    CELERY_BEAT_SCHEDULE["rotate-django-secret-key"] = {
+        "task": "core.tasks.rotate_secret_key_task",
+        "schedule": timedelta(days=SECRET_KEY_ROTATION_DAYS),
+    }
+

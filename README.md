@@ -1,5 +1,7 @@
 # Marketplace
 
+[![CI](https://github.com/uznikturbo/marketplace_project/actions/workflows/ci.yml/badge.svg)](https://github.com/uznikturbo/marketplace_project/actions/workflows/ci.yml)
+
 A full-stack e-commerce marketplace built with Django. It ships with a
 storefront, a guest-friendly cart, checkout with delivery and payment
 options, a vendor dashboard, SMS phone verification, and integrations with
@@ -19,6 +21,7 @@ build step.
 - [Environment variables](#environment-variables)
 - [Running the tests](#running-the-tests)
 - [How the main flows work](#how-the-main-flows-work)
+- [Secret key rotation](#secret-key-rotation)
 - [Security notes](#security-notes)
 - [Known limitations](#known-limitations)
 
@@ -81,6 +84,7 @@ build step.
 
 - `/health` endpoint that checks the database and returns `200`/`503` JSON.
 - `/favicon.ico` served directly by the application.
+- Optional automatic rotation of the Django `SECRET_KEY` via Celery beat.
 - Django admin customized with Jazzmin.
 - Celery worker for background SMS delivery.
 
@@ -102,6 +106,7 @@ build step.
 | Delivery         | Nova Poshta API                             |
 | Configuration    | python-dotenv                               |
 | WSGI server      | Gunicorn                                    |
+| CI               | GitHub Actions                              |
 
 ---
 
@@ -110,6 +115,7 @@ build step.
 ```text
 rozetka2.0/
 ├── .env.example              # documented environment template
+├── .github/workflows/ci.yml  # GitHub Actions pipeline
 ├── requirements.txt          # pinned dependencies
 ├── README.md
 ├── .venv/                    # local virtualenv (not tracked)
@@ -126,10 +132,11 @@ rozetka2.0/
     ├── users/                # custom user model, profile, SMS verification
     ├── registration/         # sign-up, login, SMS task and code generation
     ├── vendors/              # vendor dashboard and product management
-    ├── core/                 # home page, health check, middleware, favicon
+    ├── core/                 # home page, health check, middleware, favicon,
+    │                         # secret key rotation task and command
     ├── templates/            # shared templates
     ├── static/               # source static assets
-    └── tests/                # test suite (176 tests)
+    └── tests/                # test suite (182 tests)
 ```
 
 Each app owns its models, views, URLs and templates. Shared helpers live in
@@ -171,8 +178,8 @@ Open `.env` and set at least:
 - `POSTGRES_PASSWORD`
 - `DJANGO_DEBUG=True` for local development
 
-`DJANGO_SECRET_KEY` is required when `DJANGO_DEBUG=False`; the application
-refuses to start without it.
+`DJANGO_SECRET_KEY` (or a rotated key file) is required when
+`DJANGO_DEBUG=False`; the application refuses to start without it.
 
 ### 3. Create the database
 
@@ -213,14 +220,16 @@ python manage.py createsuperuser
 
 The admin panel is available at <http://127.0.0.1:8000/admin/>.
 
-### 7. Run the Celery worker (optional)
+### 7. Run the Celery worker and beat (optional)
 
-SMS messages are sent in the background. Without a worker, the task is
-queued but not executed.
+SMS messages are sent in the background, and a periodic task rotates the
+Django secret key. Without a worker the tasks are queued but never executed;
+without beat the periodic schedule is never triggered.
 
 ```bash
 cd marketplace
 celery -A marketplace worker -l info
+celery -A marketplace beat -l info
 ```
 
 If `SMS_API_URL` is empty, the task writes the confirmation code to the
@@ -253,6 +262,8 @@ See `.env.example` for a ready-to-copy template.
 | `LIQPAY_PRIVATE_KEY`          | no       | empty                                | LiqPay private key, used for signatures.                 |
 | `SMS_API_URL`                 | no       | empty                                | SMS provider endpoint. Codes are logged when unset.      |
 | `SMS_API_KEY`                 | no       | empty                                | SMS provider API key.                                    |
+| `DJANGO_SECRET_KEY_FILE`      | no       | `marketplace/.secret_key`            | File used by the rotation task. Overrides `DJANGO_SECRET_KEY` when present. |
+| `SECRET_KEY_ROTATION_DAYS`    | no       | `7`                                  | Rotate the secret key every N days. `0` disables rotation. |
 
 \* Required in production (`DJANGO_DEBUG=False`).
 
@@ -260,7 +271,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **176 tests** and does not require Redis: it switches to
+The suite contains **182 tests** and does not require Redis: it switches to
 an in-memory cache and a fast password hasher.
 
 ```bash
@@ -293,6 +304,7 @@ Test modules:
 | `tests/test_vendors.py`    | Vendor access, product ownership, discounts, vendor orders             |
 | `tests/test_registration.py` | Registration, login and `next` safety, SMS task behavior            |
 | `tests/test_core.py`       | Home page, health check, favicon, timezone middleware                  |
+| `tests/test_secret_rotation.py` | Secret key file creation, permissions, task and management command |
 
 > The test database is created and destroyed automatically. The database
 > user therefore needs the `CREATEDB` privilege.
@@ -342,6 +354,45 @@ the user cart and delete the guest one.
 
 ---
 
+## Secret key rotation
+
+Django's `SECRET_KEY` signs sessions, CSRF tokens and password-reset links.
+Rotating it invalidates all of them, which means every rotation logs users
+out and breaks links that were issued before it.
+
+The project can rotate the key automatically with a Celery beat task:
+
+- the key is stored in `SECRET_KEY_FILE` (default `marketplace/.secret_key`),
+  created with `0600` permissions and ignored by git;
+- a key file takes precedence over `DJANGO_SECRET_KEY`, so the first rotation
+  switches the application to file-based storage;
+- `core.tasks.rotate_secret_key_task` is scheduled every
+  `SECRET_KEY_ROTATION_DAYS` days (default `7`; set `0` to disable);
+- the file is replaced atomically, so a crash cannot leave a partial key.
+
+Manual rotation:
+
+```bash
+cd marketplace
+python manage.py rotate_secret_key
+```
+
+**Important:** Django reads `SECRET_KEY` once at startup. After a rotation
+the running web and worker processes keep the old key until they are
+restarted (for Gunicorn, `kill -HUP <master-pid>` is enough). Plan the
+restart for a low-traffic moment: as soon as the new key is loaded, all
+existing sessions and signed links become invalid.
+
+Because rotation logs everyone out, a short interval is a trade-off between
+security and user experience. Set `SECRET_KEY_ROTATION_DAYS=0` if that is
+not acceptable for your deployment.
+
+With multiple application instances the key file must live on shared storage
+(or be replaced by a proper secret manager); otherwise instances end up with
+different keys and reject each other's sessions.
+
+---
+
 ## Security notes
 
 - Secrets are read from environment variables; `.env` is git-ignored.
@@ -367,7 +418,8 @@ Before deploying:
 ## Known limitations
 
 - No API layer (DRF); everything is server-rendered.
-- No CI pipeline yet.
+- Automatic secret rotation only takes effect after a process restart, and
+  needs shared storage when running several instances.
 - `debug_toolbar` is installed unconditionally and should be moved to a
   development-only settings module.
 - Payment and SMS integrations are tested with mocks; no sandbox end-to-end
