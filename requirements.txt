@@ -1,0 +1,38 @@
+# Runtime dependencies for the marketplace project.
+# Generated from `pip freeze`; unrelated local packages were filtered out.
+# Install with: pip install -r requirements.txt
+
+amqp==5.3.1
+asgiref==3.11.1
+billiard==4.2.4
+celery==5.6.3
+certifi==2026.4.22
+charset-normalizer==3.4.7
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.3.0
+click==8.3.3
+django-debug-toolbar==6.3.0
+django-jazzmin==3.0.4
+django-phonenumber-field==8.4.0
+Django==6.0.4
+gunicorn==26.0.0
+idna==3.14
+kombu==5.6.2
+packaging==26.2
+phonenumbers==9.0.29
+prompt_toolkit==3.0.52
+psycopg2-binary==2.9.12
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+redis==7.4.0
+requests==2.33.1
+six==1.17.0
+sqlparse==0.5.5
+typing_extensions==4.15.0
+tzdata==2026.2
+tzlocal==5.3.1
+urllib3==2.7.0
+vine==5.1.0
+wcwidth==0.7.0
+whitenoise==6.12.0
