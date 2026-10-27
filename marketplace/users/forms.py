@@ -12,15 +12,15 @@ class CustomUserChangeForm(UserChangeForm):
         model = User
         fields = ("first_name", "last_name", "number", "email")
 
-        def clean_email(self):
-            email = self.cleaned_data.get("email")
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
 
-            if not email:
-                return None
-
-            email = email.lower().strip()
-
-            if User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
-                raise forms.ValidationError("Користувач з такою поштою вже існує")
-
+        if not email:
             return email
+
+        email = email.lower().strip()
+
+        if User.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Користувач з такою поштою вже існує")
+
+        return email

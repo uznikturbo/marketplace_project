@@ -1,7 +1,9 @@
-from django.db import models
-from django.contrib.auth import get_user_model
-from django.utils import timezone
 from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -107,6 +109,22 @@ class ProductDiscount(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="discounts"
     )
+
+    def __str__(self):
+        return (
+            f"{self.value}% {self.product.name} from {self.start_at} to {self.end_at}"
+        )
+
+    def clean(self):
+        super().clean()
+        if not 1 <= self.value <= 100:
+            raise ValidationError(
+                {"value": "Знижка має бути від 1 до 100 відсотків."}
+            )
+        if self.start_at and self.end_at and self.end_at <= self.start_at:
+            raise ValidationError(
+                {"end_at": "Дата завершення має бути пізніше дати початку."}
+            )
 
 
 class Cart(models.Model):

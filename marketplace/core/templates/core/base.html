@@ -436,7 +436,10 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <a href="{% url 'cart_remove' pk=item.product.pk %}" style="color: red; font-size: 12px;">Видалити</a>
+                                <form method="post" action="{% url 'cart_remove' pk=item.product.pk %}" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" style="background:none;border:none;padding:0;color:var(--red);font-size:12px;font-family:inherit;cursor:pointer;">Видалити</button>
+                                </form>
                             </div>
                             {% endfor %}
                         </div>
@@ -496,7 +499,7 @@
                             {% if user.is_vendor %}
                                 <li><a href="{% url 'vendor_view' %}">Мої товари</a></li>
                             {% endif %}
-                            <li><a href="#">Мої замовлення</a></li>
+                            <li><a href="{% url 'profile_orders' %}">Мої замовлення</a></li>
                             <li><a href="{% url 'profile_wishlist' %}">Список бажань</a></li>
                             <li class="dropdown-divider"></li>
                             <li>

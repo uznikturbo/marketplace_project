@@ -25,5 +25,4 @@ class OrderCreateForm(forms.ModelForm):
             "comment": forms.Textarea(attrs={"rows": 3, "placeholder": "Коментар"}),
             "delivery_method": forms.RadioSelect(),
             "payment_method": forms.RadioSelect(),
-            "middlename": forms.CharField(required=False, max_length=100),
         }

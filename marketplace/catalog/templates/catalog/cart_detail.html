@@ -329,10 +329,13 @@
                             <div class="item-total" {% if item.product.is_discounted %}style="color: var(--red);"{% endif %}>
                                 {{ item.get_total_price|floatformat:0 }} ₴
                             </div>
-                            <a href="{% url 'cart_remove' pk=item.product.id %}" class="btn-remove">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                Видалити
-                            </a>
+                            <form method="post" action="{% url 'cart_remove' pk=item.product.id %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-remove">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                    Видалити
+                                </button>
+                            </form>
                         </div>
                     </div>
                 {% endfor %}

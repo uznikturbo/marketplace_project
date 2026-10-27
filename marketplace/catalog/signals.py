@@ -5,7 +5,12 @@ from .models import Cart, CartItem
 
 @receiver(user_logged_in)
 def merge_carts_on_login(sender, request, user, **kwargs):
-    session_key = request.session.session_key
+    # login() змінює ключ сесії, тому беремо ключ, збережений при створенні
+    # гостьового кошика (get_user_cart).
+    session_key = request.session.pop("cart_session_key", None)
+    if not session_key:
+        session_key = request.session.session_key
+
     if session_key:
         guest_cart = Cart.objects.filter(session_key=session_key).first()
 

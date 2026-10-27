@@ -1,6 +1,22 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
-from phonenumber_field.modelfields import PhoneNumberField
+
+
+def normalize_number(number):
+    """Приводить номер телефону до єдиного формату (+380XXXXXXXXX)."""
+    if not number:
+        return number
+
+    number = str(number).strip()
+    if not number:
+        return number
+    if number.startswith("+38"):
+        return number
+    if number.startswith("38"):
+        return "+" + number
+    if number.startswith("+"):
+        return number
+    return "+38" + number
 
 
 class CustomUserManager(BaseUserManager):
@@ -48,6 +64,20 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+
+    def clean(self):
+        super().clean()
+        # Нормалізація тут (а не лише в сигналі pre_save) потрібна для того,
+        # щоб перевірка унікальності номера/пошти бачила вже нормалізовані дані.
+        self.number = normalize_number(self.number)
+        if self.email:
+            self.email = self.email.strip().lower()
+
+    def save(self, *args, **kwargs):
+        self.number = normalize_number(self.number)
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return str(self.number)

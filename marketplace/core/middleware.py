@@ -10,7 +10,11 @@ class TimezoneMiddleware:
         tzname = request.session.get("user_timezone")
 
         if tzname:
-            timezone.activate(zoneinfo.ZoneInfo(tzname))
+            try:
+                timezone.activate(zoneinfo.ZoneInfo(tzname))
+            except (zoneinfo.ZoneInfoNotFoundError, ValueError, TypeError):
+                timezone.deactivate()
+                request.session.pop("user_timezone", None)
         else:
             timezone.deactivate()
 

@@ -1,14 +1,9 @@
-from .utils import get_user_cart
+from .utils import get_cart, get_favorite_ids
 
 
 def cart(request):
-    return {"cart": get_user_cart(request)}
+    return {"cart": get_cart(request)}
 
 
 def user_favorites(request):
-    if request.user.is_authenticated:
-        fav_ids = list(request.user.favorites.values_list("pk", flat=True))
-    else:
-        fav_ids = request.session.get("favorites", [])
-
-    return {"user_favorites_ids": fav_ids}
+    return {"user_favorite_ids": get_favorite_ids(request)}

@@ -1,63 +1,66 @@
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-import hashlib
 import base64
-from .models import OrderStatus, Order, PaymentStatus
-from django.http import HttpResponse
+import binascii
+import hashlib
+import hmac
 import json
+
+from django.conf import settings
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+
+from .models import Order, OrderStatus, PaymentStatus
 
 
 @csrf_exempt
 def liqpay_callback(request):
-    if request.method == "POST":
-        data = request.POST.get("data")
-        signature = request.POST.get("signature")
+    if request.method != "POST":
+        return HttpResponse("Method not allowed", status=405)
 
-        print("\n=== LIQPAY CALLBACK RECEIVED ===")
-        print(f"Data present: {bool(data)}")
-        print(f"Signature present: {bool(signature)}")
+    data = request.POST.get("data")
+    signature = request.POST.get("signature")
 
-        if not data or not signature:
-            print("❌ ОШИБКА: Пустая дата или сигнатура!")
-            return HttpResponse("Bad Request", status=400)
+    if not data or not signature:
+        return HttpResponse("Bad Request", status=400)
 
-        sign_string = settings.LIQPAY_PRIVATE_KEY + data + settings.LIQPAY_PRIVATE_KEY
-        expected_signature = base64.b64encode(
-            hashlib.sha1(sign_string.encode("utf-8")).digest()
-        ).decode("utf-8")
+    if not settings.LIQPAY_PRIVATE_KEY:
+        return HttpResponse("Payment provider is not configured", status=503)
 
-        if signature == expected_signature:
-            print("✅ Подпись совпала!")
+    sign_string = settings.LIQPAY_PRIVATE_KEY + data + settings.LIQPAY_PRIVATE_KEY
+    expected_signature = base64.b64encode(
+        hashlib.sha1(sign_string.encode("utf-8")).digest()
+    ).decode("utf-8")
 
-            decoded_data = json.loads(base64.b64decode(data).decode("utf-8"))
-            status = decoded_data.get("status")
-            order_id = decoded_data.get("order_id")
+    if not hmac.compare_digest(signature, expected_signature):
+        return HttpResponse("Invalid signature", status=400)
 
-            print(f"ℹ️ Статус от LiqPay: '{status}' для заказа №{order_id}")
+    try:
+        decoded_data = json.loads(base64.b64decode(data).decode("utf-8"))
+    except (binascii.Error, ValueError, UnicodeDecodeError):
+        return HttpResponse("Bad Request", status=400)
 
-            try:
-                order = Order.objects.get(id=order_id.split("_")[0])
-                if status in ["success", "wait_accept", "sandbox"]:
-                    order.payment_status = PaymentStatus.PAID
-                    order.payment_id = decoded_data.get("transaction_id")
-                    order.status = OrderStatus.PROCESSING
-                    order.save()
-                    print(f"✅ Заказ №{order_id} успешно отмечен как ОПЛАЧЕН.")
-                elif status in ["failure", "error"]:
-                    order.payment_status = PaymentStatus.FAILED
-                    order.save()
-                    print(f"❌ Заказ №{order_id} отмечен как ОШИБКА ОПЛАТЫ.")
-                else:
-                    print(f"⚠️ Получен неизвестный статус: {status}")
+    if not isinstance(decoded_data, dict):
+        return HttpResponse("Bad Request", status=400)
 
-            except Order.DoesNotExist:
-                print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: Заказ №{order_id} не найден в БД!")
-        else:
-            print("❌ КРИТИЧЕСКАЯ ОШИБКА: Подпись НЕ СОВПАЛА!")
-            print(f"Ожидалось: {expected_signature}")
-            print(f"Пришло: {signature}")
+    status = decoded_data.get("status")
+    order_id = decoded_data.get("order_id")
 
-        print("================================\n")
-        return HttpResponse("OK")
+    if not order_id:
+        return HttpResponse("Bad Request", status=400)
 
-    return HttpResponse("Method not allowed", status=405)
+    try:
+        order = Order.objects.get(id=str(order_id).split("_")[0])
+    except (Order.DoesNotExist, ValueError):
+        return HttpResponse("Order not found", status=404)
+
+    if status in ("success", "wait_accept", "sandbox"):
+        order.payment_status = PaymentStatus.PAID
+        order.payment_id = decoded_data.get("transaction_id")
+        order.status = OrderStatus.PROCESSING
+        order.save(
+            update_fields=["payment_status", "payment_id", "status", "updated_at"]
+        )
+    elif status in ("failure", "error") and order.payment_status != PaymentStatus.PAID:
+        order.payment_status = PaymentStatus.FAILED
+        order.save(update_fields=["payment_status", "updated_at"])
+
+    return HttpResponse("OK")

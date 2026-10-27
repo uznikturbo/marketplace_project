@@ -22,7 +22,7 @@ ProductImageFormSet = inlineformset_factory(
     fields=("image_url",),
     extra=3,
     widgets={
-        "url": forms.URLInput(
+        "image_url": forms.URLInput(
             attrs={"class": "form-control", "placeholder": "URL картинки"}
         )
     },

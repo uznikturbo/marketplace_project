@@ -42,7 +42,7 @@ def profile_wishlist_view(request):
     return render(
         request,
         "users/wishlist.html",
-        {"products": products, "get_favorite_ids": get_favorite_ids(request)},
+        {"products": products, "user_favorite_ids": get_favorite_ids(request)},
     )
 
 
@@ -79,10 +79,20 @@ def send_verification_sms_view(request):
 
     cache_key = f"sms_code_{user.number}"
     cache.set(cache_key, code, timeout=300)
+    cache.delete(f"sms_attempts_{user.number}")
 
     cache.set(lock_key, True, timeout=60)
 
-    send_sms_conf_task.delay(user.number, code)
+    try:
+        send_sms_conf_task.delay(user.number, code)
+    except Exception:
+        # Якщо брокер/Celery недоступний, не залишаємо користувача з
+        # "мертвим" лімітом і повідомляємо про помилку.
+        cache.delete(lock_key)
+        cache.delete(cache_key)
+        return JsonResponse(
+            {"error": "Сервіс відправки SMS тимчасово недоступний"}, status=503
+        )
 
     return JsonResponse({"status": "Код успішно відправлено у фоні"})
 
@@ -112,16 +122,26 @@ def verify_sms_code_view(request):
             {"error": "Код застарів або не запитувався. Спробуйте ще раз"}, status=400
         )
 
+    attempts_key = f"sms_attempts_{user.number}"
+    attempts = cache.get(attempts_key, 0)
+    if attempts >= 5:
+        return JsonResponse(
+            {"error": "Забагато невдалих спроб. Запросіть новий код."}, status=429
+        )
+
     if saved_code == str(user_code).strip():
         user.confirmed = True
         user.save(update_fields=["confirmed"])
 
         cache.delete(cache_key)
+        cache.delete(attempts_key)
         cache.delete(f"sms_lock_{user.number}")
 
         return JsonResponse(
             {"status": "success", "message": "Номер телефону успішно підтверджено!"}
         )
+
+    cache.set(attempts_key, attempts + 1, timeout=300)
 
     return JsonResponse(
         {"error": "Невірний код підтвердження. Спробуйте ще раз"}, status=400

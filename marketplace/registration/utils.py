@@ -1,5 +1,5 @@
-import random
+import secrets
 
 
 def generate_code():
-    return "".join([random.randint(1, 9) for _ in range(6)])
+    return "".join(str(secrets.randbelow(10)) for _ in range(6))

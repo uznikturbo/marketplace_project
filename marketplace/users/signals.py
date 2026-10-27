@@ -2,6 +2,8 @@ from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 
+from users.models import normalize_number
+
 User = get_user_model()
 
 
@@ -15,5 +17,5 @@ def update_user_profile(sender, instance, **kwargs):
     except sender.DoesNotExist:
         return
 
-    if old_instance.number != instance.number:
+    if normalize_number(old_instance.number) != normalize_number(instance.number):
         instance.confirmed = False

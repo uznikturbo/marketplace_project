@@ -8,24 +8,24 @@ from .forms import OrderCreateForm
 import base64
 import hashlib
 import json
+import logging
 from django.conf import settings
 import requests
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from catalog.models import Cart
+from catalog.models import Product
+from catalog.utils import get_cart
 import time
+
+logger = logging.getLogger(__name__)
+
+
+def _liqpay_is_configured():
+    return bool(settings.LIQPAY_PUBLIC_KEY and settings.LIQPAY_PRIVATE_KEY)
 
 
 def checkout(request):
-    if request.user.is_authenticated:
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-    else:
-        session_key = request.session.session_key
-        cart = (
-            Cart.objects.filter(session_key=session_key).first()
-            if session_key
-            else None
-        )
+    cart = get_cart(request)
 
     if not cart or not cart.items.exists():
         messages.warning(request, "Ваш кошик порожній.")
@@ -34,6 +34,16 @@ def checkout(request):
     if request.method == "POST":
         form = OrderCreateForm(request.POST)
         if form.is_valid():
+            if (
+                form.cleaned_data.get("payment_method") == PaymentMethod.LIQPAY
+                and not _liqpay_is_configured()
+            ):
+                messages.error(
+                    request,
+                    "Онлайн-оплата тимчасово недоступна. Оберіть післяплату.",
+                )
+                return redirect("checkout")
+
             try:
                 with transaction.atomic():
                     order = form.save(commit=False)
@@ -52,8 +62,17 @@ def checkout(request):
                     order.total_amount = order.total_products + order.postpaid_fee
                     order.save()
 
-                    for item in cart.items.all():
-                        product = item.product
+                    for item in cart.items.select_related("product").all():
+                        # Блокуємо рядок товару, щоб два замовлення одночасно
+                        # не могли продати більше, ніж є на складі.
+                        product = Product.objects.select_for_update().get(
+                            pk=item.product_id
+                        )
+
+                        if not product.is_available:
+                            raise ValueError(
+                                f"Товар '{product.name}' більше недоступний."
+                            )
 
                         if product.quantity < item.quantity:
                             raise ValueError(
@@ -69,7 +88,7 @@ def checkout(request):
                         )
 
                         product.quantity -= item.quantity
-                        product.save()
+                        product.save(update_fields=["quantity"])
 
                     if request.user.is_authenticated:
                         user = request.user
@@ -78,7 +97,7 @@ def checkout(request):
                         user.middle_name = form.cleaned_data.get("middle_name", "")
                         user.number = form.cleaned_data.get("number")
 
-                        if order.city_ref and order.warehouse_ref:
+                        if order.city_ref:
                             user.default_city = order.city
                             user.default_city_ref = order.city_ref
                             user.default_address = order.address
@@ -86,6 +105,13 @@ def checkout(request):
                         user.save()
 
                     cart.items.all().delete()
+
+                # Запам'ятовуємо замовлення в сесії, щоб гість міг бачити
+                # сторінку успіху, але не міг переглядати чужі замовлення.
+                guest_order_ids = request.session.get("guest_order_ids", [])
+                if order.id not in guest_order_ids:
+                    guest_order_ids.append(order.id)
+                    request.session["guest_order_ids"] = guest_order_ids
 
                 if order.payment_method == PaymentMethod.LIQPAY:
                     result_url = request.build_absolute_uri(
@@ -118,7 +144,7 @@ def checkout(request):
                     liqpay_signature = base64.b64encode(
                         hashlib.sha1(sign_string.encode("utf-8")).digest()
                     ).decode("utf-8")
-                    print(f"[DEBUG] server_url = {server_url}")
+
                     return render(
                         request,
                         "orders/liqpay_redirect.html",
@@ -130,8 +156,8 @@ def checkout(request):
             except ValueError as e:
                 messages.error(request, str(e))
                 return redirect("checkout")
-            except Exception as e:
-                print("Error: ", e)
+            except Exception:
+                logger.exception("Unexpected error while creating order")
                 messages.error(request, "Сталася системна помилка. Спробуйте ще раз.")
                 return redirect("checkout")
 
@@ -157,11 +183,17 @@ def checkout(request):
 def order_success(request, order_id):
     order = get_object_or_404(Order, id=order_id)
 
-    if request.user.is_authenticated and order.user != request.user:
-        return redirect("home")
+    guest_order_ids = request.session.get("guest_order_ids", [])
 
-    if not request.user.is_authenticated and order.user is not None:
-        return redirect("home")
+    if request.user.is_authenticated:
+        if order.user_id is not None:
+            if order.user_id != request.user.id:
+                return redirect("home")
+        elif order.id not in guest_order_ids:
+            return redirect("home")
+    else:
+        if order.user_id is not None or order.id not in guest_order_ids:
+            return redirect("home")
 
     liqpay_data_b64 = None
     liqpay_signature = None
@@ -169,6 +201,7 @@ def order_success(request, order_id):
     if (
         order.payment_method == PaymentMethod.LIQPAY
         and order.payment_status == PaymentStatus.PENDING
+        and _liqpay_is_configured()
     ):
         result_url = request.build_absolute_uri(
             reverse("order_success", args=[order.id])
@@ -209,6 +242,12 @@ def order_success(request, order_id):
 
 
 def np_get_cities(request):
+    if not settings.NOVAPOST_API:
+        return JsonResponse(
+            {"success": False, "error": "Nova Poshta API key is not configured"},
+            status=503,
+        )
+
     search_query = request.GET.get("q", "")
     payload = {
         "apiKey": settings.NOVAPOST_API,
@@ -217,11 +256,26 @@ def np_get_cities(request):
         "methodProperties": {"FindByString": search_query, "Limit": "50"},
     }
 
-    response = requests.post("https://api.novaposhta.ua/v2.0/json/", json=payload)
-    return JsonResponse(response.json())
+    try:
+        response = requests.post(
+            "https://api.novaposhta.ua/v2.0/json/", json=payload, timeout=10
+        )
+        response.raise_for_status()
+        return JsonResponse(response.json())
+    except (requests.RequestException, ValueError):
+        return JsonResponse(
+            {"success": False, "error": "Nova Poshta API is unavailable"},
+            status=502,
+        )
 
 
 def np_get_warehouses(request):
+    if not settings.NOVAPOST_API:
+        return JsonResponse(
+            {"success": False, "error": "Nova Poshta API key is not configured"},
+            status=503,
+        )
+
     city_ref = request.GET.get("city_ref")
 
     if not city_ref:
@@ -234,19 +288,32 @@ def np_get_warehouses(request):
         "methodProperties": {"CityRef": city_ref},
     }
 
-    response = requests.post("https://api.novaposhta.ua/v2.0/json/", json=payload)
-    return JsonResponse(response.json())
+    try:
+        response = requests.post(
+            "https://api.novaposhta.ua/v2.0/json/", json=payload, timeout=10
+        )
+        response.raise_for_status()
+        return JsonResponse(response.json())
+    except (requests.RequestException, ValueError):
+        return JsonResponse(
+            {"success": False, "error": "Nova Poshta API is unavailable"},
+            status=502,
+        )
 
 
 @login_required
 def order_pay(request, pk):
-    order = get_object_or_404(Order, pk=pk)
+    order = get_object_or_404(Order, pk=pk, user=request.user)
     if order.payment_method != PaymentMethod.LIQPAY:
         messages.error(request, "Це замовлення не передбачає онлайн-оплати карткою.")
         return redirect("profile_orders")
 
     if order.payment_status == PaymentStatus.PAID:
         messages.warning(request, "Замовлення вже оплачено!")
+        return redirect("profile_orders")
+
+    if not _liqpay_is_configured():
+        messages.error(request, "Онлайн-оплата тимчасово недоступна.")
         return redirect("profile_orders")
 
     result_url = request.build_absolute_uri(reverse("order_success", args=[order.id]))
@@ -273,7 +340,7 @@ def order_pay(request, pk):
     liqpay_signature = base64.b64encode(
         hashlib.sha1(sign_string.encode("utf-8")).digest()
     ).decode("utf-8")
-    print(f"[DEBUG] server_url = {server_url}")
+
     return render(
         request,
         "orders/liqpay_redirect.html",

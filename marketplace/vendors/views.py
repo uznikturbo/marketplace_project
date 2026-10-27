@@ -158,7 +158,9 @@ def vendor_orders_view(request):
 def vendor_order_detail(request, pk):
     vendor = request.user
 
-    order = get_object_or_404(Order, pk=pk, items__product__user=vendor)
+    order = get_object_or_404(
+        Order.objects.filter(items__product__user=vendor).distinct(), pk=pk
+    )
 
     vendor_items = order.items.filter(product__user=vendor).select_related("product")
 

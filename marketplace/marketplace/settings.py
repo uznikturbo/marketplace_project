@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "***REMOVED***"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".ngrok-free.app", ".ngrok.io"]
 
@@ -158,7 +158,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 
 # Auth
-LOGIN_URL = "registration/login/"
+LOGIN_URL = "/registration/login/"
 LOGIN_REDIRECT_URL = "/catalog/"
 LOGOUT_REDIRECT_URL = "/catalog/"
 
@@ -172,6 +172,10 @@ NOVAPOST_API = os.getenv("NOVAPOST_API")
 # LIQPAY
 LIQPAY_PUBLIC_KEY = os.getenv("LIQPAY_PUBLIC_KEY")
 LIQPAY_PRIVATE_KEY = os.getenv("LIQPAY_PRIVATE_KEY")
+
+# SMS
+SMS_API_URL = os.getenv("SMS_API_URL")
+SMS_API_KEY = os.getenv("SMS_API_KEY")
 
 
 # CELERY
