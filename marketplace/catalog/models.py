@@ -47,17 +47,35 @@ class Product(models.Model):
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "Products"
+        indexes = [
+            # Catalog listing: available products, newest first.
+            models.Index(
+                fields=["is_available", "-created_at"],
+                name="product_avail_created_idx",
+            ),
+            # Catalog filtered by category (including subcategories).
+            models.Index(
+                fields=["category", "is_available", "-created_at"],
+                name="product_cat_avail_idx",
+            ),
+        ]
 
     def __str__(self):
         return self.name
 
     @property
     def average_rating(self):
+        # Catalog listings annotate the value to avoid one query per product.
+        if hasattr(self, "annotated_avg_rating"):
+            value = self.annotated_avg_rating
+            return round(value, 1) if value is not None else 0.0
         avg = self.ratings.aggregate(models.Avg("rating"))["rating__avg"]
         return round(avg, 1) if avg else 0.0
 
     @property
     def ratings_count(self):
+        if hasattr(self, "annotated_ratings_count"):
+            return self.annotated_ratings_count
         return self.ratings.count()
 
     @property
@@ -66,8 +84,16 @@ class Product(models.Model):
 
     @property
     def active_discount(self):
+        now = timezone.now()
+        # Reuse prefetched discounts when the queryset provided them.
+        prefetched = getattr(self, "_prefetched_objects_cache", {}).get("discounts")
+        if prefetched is not None:
+            for discount in prefetched:
+                if discount.start_at <= now <= discount.end_at:
+                    return discount
+            return None
         return self.discounts.filter(
-            start_at__lte=timezone.now(), end_at__gte=timezone.now()
+            start_at__lte=now, end_at__gte=now
         ).first()
 
     @property
@@ -101,6 +127,14 @@ class ProductRating(models.Model):
     review = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            # Average rating and review count are computed per product.
+            models.Index(
+                fields=["product", "rating"], name="rating_product_score_idx"
+            ),
+        ]
+
 
 class ProductDiscount(models.Model):
     value = models.PositiveSmallIntegerField(default=1)
@@ -109,6 +143,15 @@ class ProductDiscount(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="discounts"
     )
+
+    class Meta:
+        indexes = [
+            # Active discount lookup: product + date range.
+            models.Index(
+                fields=["product", "start_at", "end_at"],
+                name="discount_active_idx",
+            ),
+        ]
 
     def __str__(self):
         return (
@@ -147,6 +190,14 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
 
+    class Meta:
+        indexes = [
+            # get_or_create(cart=..., product=...) and remove-by-product.
+            models.Index(
+                fields=["cart", "product"], name="cartitem_cart_product_idx"
+            ),
+        ]
+
     def get_total_price(self):
         return self.product.get_current_price * self.quantity
 
@@ -160,3 +211,9 @@ class Favorite(models.Model):
 
     class Meta:
         unique_together = ("user", "product")
+        indexes = [
+            # Wishlist pages: favorites of one user, newest first.
+            models.Index(
+                fields=["user", "-created_at"], name="favorite_user_created_idx"
+            ),
+        ]

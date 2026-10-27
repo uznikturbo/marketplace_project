@@ -5,9 +5,13 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .utils import get_user_cart, get_all_subcategories_ids, get_favorite_ids
 from .models import CartItem
-from django.db.models import Q
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
 from django.core.cache import cache
+
+
+CATALOG_PAGE_SIZE = 12
 
 
 # Create your views here.
@@ -27,7 +31,16 @@ def catalog_view(request):
         categories = list(models.Category.objects.filter(parent=None))
         cache.set("all_root_categories", categories, timeout=60 * 60 * 24)
 
-    products = models.Product.objects.filter(is_available=True)
+    products = (
+        models.Product.objects.filter(is_available=True)
+        .select_related("category")
+        .prefetch_related("images", "discounts")
+        .annotate(
+            annotated_avg_rating=Avg("ratings__rating"),
+            annotated_ratings_count=Count("ratings"),
+        )
+        .order_by("-created_at")
+    )
 
     if query:
         products = products.filter(
@@ -52,11 +65,17 @@ def catalog_view(request):
             # Неіснуюча категорія не повинна показувати весь каталог.
             products = products.none()
 
+    paginator = Paginator(products, CATALOG_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
     return render(
         request,
         "catalog/catalog.html",
         {
-            "products": products,
+            "products": page_obj.object_list,
+            "page_obj": page_obj,
+            "paginator": paginator,
+            "page_range": paginator.get_elided_page_range(page_obj.number),
             "categories": categories,
             "query": query,
             "current_category_id": current_category_id,

@@ -190,6 +190,20 @@ class CatalogUITests(UITestCase):
         expect(self.page.locator(".products-grid")).to_contain_text("Ноутбук Alpha")
         expect(self.page.locator(".products-grid")).not_to_contain_text("Футболка Beta")
 
+    def test_catalog_pagination_navigates_to_second_page(self):
+        for index in range(13):
+            make_product(name=f"Paged UI {index:02d}")
+
+        self.page.goto("/catalog/")
+
+        expect(self.page.locator(".products-grid .product-card")).to_have_count(12)
+        expect(self.page.locator(".pagination")).to_be_visible()
+
+        self.page.locator(".pagination a.page-btn", has_text="2").click()
+
+        expect(self.page).to_have_url(re.compile(r"\?page=2$"))
+        expect(self.page.locator(".products-grid .product-card")).to_have_count(1)
+
     def test_product_card_opens_detail_page(self):
         product = make_product(name="Ноутбук Detail")
 

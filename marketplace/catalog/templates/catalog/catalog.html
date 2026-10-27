@@ -183,6 +183,22 @@
     .empty-state h3 { font-size: 20px; color: var(--gray-1); margin-bottom: 8px; }
     .empty-state p { font-size: 14px; color: var(--gray-2); }
 
+    .pagination {
+        display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+        gap: 8px; margin: 32px 0 8px;
+    }
+    .page-btn {
+        min-width: 40px; height: 40px; padding: 0 12px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--white); border: 1px solid var(--gray-4); border-radius: var(--radius);
+        color: var(--gray-1); font-size: 14px; font-weight: 600; text-decoration: none;
+        transition: border-color .2s, color .2s, background .2s;
+    }
+    a.page-btn:hover { border-color: var(--green); color: var(--green); }
+    .page-btn.active { background: var(--green); border-color: var(--green); color: var(--white); }
+    .page-btn.disabled { opacity: .45; }
+    .page-ellipsis { color: var(--gray-3); padding: 0 4px; }
+
     @media (max-width: 900px) { .catalog-layout { grid-template-columns: 1fr; } .sidebar { position: static; } }
     @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
 </style>
@@ -275,9 +291,9 @@
         <div class="toolbar">
             <div class="toolbar-left">
                 {% if query %}
-                    Результати пошуку "<strong>{{ query }}</strong>": знайдено <strong>{{ products|length }}</strong> товарів
+                    Результати пошуку "<strong>{{ query }}</strong>": знайдено <strong>{{ paginator.count }}</strong> товарів
                 {% else %}
-                    Знайдено: <strong>{{ products|length }} товарів</strong>
+                    Знайдено: <strong>{{ paginator.count }} товарів</strong>
                 {% endif %}
             </div>
             <div class="toolbar-right">
@@ -411,6 +427,8 @@
                 <p>Спробуйте змінити фільтри або обрати іншу категорію</p>
             </div>
         {% endif %}
+
+        {% include "catalog/_pagination.html" %}
 
     </div><!-- /catalog-main -->
 </div><!-- /catalog-layout -->

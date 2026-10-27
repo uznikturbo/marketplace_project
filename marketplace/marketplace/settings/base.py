@@ -18,7 +18,9 @@ from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+# ``base.py`` lives in ``<project>/marketplace/settings/``, so the Django
+# project root is three levels up.
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 # Load environment variables from the Django project directory and from the
 # repository root, so `manage.py` behaves the same regardless of the cwd.
@@ -40,11 +42,21 @@ def env_list(name, default=""):
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def env_int(name, default=0):
+    """Read an integer from the environment, falling back to ``default``."""
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool("DJANGO_DEBUG", False)
+# ``DEBUG`` and ``SECRET_KEY`` are defined by the concrete settings module
+# (dev.py, prod.py or test.py). Keeping ``DEBUG`` false here is a safe default
+# if this module is ever imported directly.
+DEBUG = False
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # The key can live in a file (used by the rotation task) or in the
@@ -54,7 +66,11 @@ SECRET_KEY_FILE = Path(
 )
 
 
-def _load_secret_key():
+def load_secret_key(debug=False):
+    """Return the secret key from the key file, the environment or a fallback.
+
+    The insecure fallback is only allowed for development/test settings.
+    """
     if SECRET_KEY_FILE.exists():
         key = SECRET_KEY_FILE.read_text().strip()
         if key:
@@ -64,7 +80,7 @@ def _load_secret_key():
     if key:
         return key
 
-    if DEBUG:
+    if debug:
         return "django-insecure-local-development-only"
 
     raise ImproperlyConfigured(
@@ -73,16 +89,11 @@ def _load_secret_key():
     )
 
 
-SECRET_KEY = _load_secret_key()
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
-ALLOWED_HOSTS = env_list(
-    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.ngrok-free.app,.ngrok.io"
-)
-
-
-CSRF_TRUSTED_ORIGINS = env_list(
-    "DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.ngrok-free.app"
-)
+# Production must list its own origins explicitly; development settings add
+# the ngrok domains used for local payment-callback testing.
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
@@ -97,7 +108,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "debug_toolbar",
     "phonenumber_field",
     "users",
     "catalog",
@@ -116,11 +126,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "core.middleware.TimezoneMiddleware",
 ]
-
-INTERNAL_IPS = ["127.0.0.1"]
 
 ROOT_URLCONF = "marketplace.urls"
 

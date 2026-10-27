@@ -74,6 +74,70 @@ class CatalogViewTests(BaseTestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class CatalogPaginationTests(BaseTestCase):
+    def _create_products(self, count):
+        return [make_product(name=f"Paged product {i:02d}") for i in range(count)]
+
+    def test_first_page_contains_page_size_products(self):
+        products = self._create_products(13)
+
+        response = self.client.get(reverse("catalog"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["products"]), 12)
+        self.assertEqual(response.context["paginator"].count, 13)
+        self.assertTrue(response.context["page_obj"].has_next())
+
+    def test_second_page_contains_the_rest(self):
+        products = self._create_products(13)
+
+        first = self.client.get(reverse("catalog"))
+        second = self.client.get(reverse("catalog"), {"page": 2})
+
+        first_names = {product.name for product in first.context["products"]}
+        second_names = {product.name for product in second.context["products"]}
+
+        self.assertEqual(len(second_names), 1)
+        self.assertEqual(first_names | second_names, {p.name for p in products})
+        self.assertFalse(first_names & second_names)
+
+    def test_page_out_of_range_returns_last_page(self):
+        self._create_products(13)
+
+        response = self.client.get(reverse("catalog"), {"page": 999})
+
+        self.assertEqual(response.context["page_obj"].number, 2)
+        self.assertEqual(len(response.context["products"]), 1)
+
+    def test_pagination_preserves_search_query(self):
+        self._create_products(13)
+
+        response = self.client.get(
+            reverse("catalog"), {"q": "Paged product", "page": 2}
+        )
+
+        self.assertContains(response, "q=Paged+product&amp;page=1")
+
+    def test_pagination_preserves_category_filter(self):
+        root = make_category(name="Paged root")
+        for i in range(13):
+            make_product(name=f"Category product {i:02d}", category=root)
+
+        response = self.client.get(
+            reverse("catalog"), {"category": root.id, "page": 2}
+        )
+
+        self.assertContains(response, f"category={root.id}&amp;page=1")
+
+    def test_pagination_is_hidden_for_a_single_page(self):
+        self._create_products(12)
+
+        response = self.client.get(reverse("catalog"))
+
+        self.assertEqual(response.context["paginator"].count, 12)
+        self.assertNotContains(response, 'class="pagination"')
+
+
 class ReviewTests(BaseTestCase):
     def setUp(self):
         super().setUp()

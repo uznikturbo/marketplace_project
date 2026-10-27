@@ -116,13 +116,14 @@ build step.
 rozetka2.0/
 ├── .env.example              # documented environment template
 ├── .github/workflows/ci.yml  # GitHub Actions pipeline
-├── requirements.txt          # pinned dependencies
+├── requirements.txt          # pinned runtime dependencies
+├── requirements-dev.txt      # runtime + Debug Toolbar + Playwright
 ├── README.md
 ├── .venv/                    # local virtualenv (not tracked)
 └── marketplace/
     ├── manage.py
     ├── marketplace/          # project configuration
-    │   ├── settings.py
+    │   ├── settings/         # base / dev / prod / test modules
     │   ├── urls.py
     │   ├── celery.py
     │   ├── wsgi.py
@@ -136,7 +137,7 @@ rozetka2.0/
     │                         # secret key rotation task and command
     ├── templates/            # shared templates
     ├── static/               # source static assets
-    └── tests/                # test suite (182 tests)
+    └── tests/                # test suite (203 tests)
 ```
 
 Each app owns its models, views, URLs and templates. Shared helpers live in
@@ -179,8 +180,11 @@ git clone https://github.com/uznikturbo/marketplace_project.git
 cd rozetka2.0
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+`requirements.txt` contains runtime dependencies only; `requirements-dev.txt`
+adds the Debug Toolbar and Playwright for local development and tests.
 
 ### 2. Configure the environment
 
@@ -195,10 +199,25 @@ Open `.env` and set at least:
   python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"
   ```
 - `POSTGRES_PASSWORD`
-- `DJANGO_DEBUG=True` for local development
 
-`DJANGO_SECRET_KEY` (or a rotated key file) is required when
-`DJANGO_DEBUG=False`; the application refuses to start without it.
+`manage.py` uses `marketplace.settings.dev` by default, so local development
+does not require a secret key (an insecure fallback is used). Production
+settings require `DJANGO_SECRET_KEY` (or a rotated key file) and refuse to
+start without it.
+
+### Settings modules
+
+| Module                   | Used by                     | Behaviour                                              |
+| ------------------------ | --------------------------- | ------------------------------------------------------ |
+| `marketplace.settings.dev`  | `manage.py` (default)    | `DEBUG=True`, Debug Toolbar, plain HTTP                |
+| `marketplace.settings.prod` | WSGI, ASGI, Celery       | `DEBUG=False`, HTTPS redirect, HSTS, secure cookies    |
+| `marketplace.settings.test` | tests and CI             | in-memory cache, fast hasher, no HTTPS enforcement     |
+
+Override the module with `DJANGO_SETTINGS_MODULE`, for example:
+
+```bash
+DJANGO_SETTINGS_MODULE=marketplace.settings.prod python manage.py check --deploy
+```
 
 ### 3. Create the database
 
@@ -259,15 +278,15 @@ development.
 
 ## Environment variables
 
-All variables are read in `marketplace/settings.py` via `python-dotenv`.
+All variables are read in `marketplace/settings/base.py` via `python-dotenv`.
 See `.env.example` for a ready-to-copy template.
 
 | Variable                      | Required | Default                              | Description                                              |
 | ----------------------------- | -------- | ------------------------------------ | -------------------------------------------------------- |
-| `DJANGO_SECRET_KEY`           | yes\*    | —                                    | Django secret key. Required when `DJANGO_DEBUG=False`.   |
-| `DJANGO_DEBUG`                | no       | `False`                              | Enables debug mode.                                      |
-| `DJANGO_ALLOWED_HOSTS`        | no       | `localhost,127.0.0.1,.ngrok-free.app,.ngrok.io` | Comma-separated `ALLOWED_HOSTS`.                |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | no       | `https://*.ngrok-free.app`           | Comma-separated trusted origins.                         |
+| `DJANGO_SETTINGS_MODULE`      | no       | dev for `manage.py`, prod for WSGI   | Settings module (see above).                             |
+| `DJANGO_SECRET_KEY`           | yes\*    | —                                    | Django secret key. Required by `settings.prod`.          |
+| `DJANGO_ALLOWED_HOSTS`        | no       | `localhost,127.0.0.1`                | Comma-separated `ALLOWED_HOSTS`. Dev adds ngrok domains. |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | no       | empty                                | Comma-separated trusted origins. Dev adds ngrok.         |
 | `POSTGRES_DB`                 | no       | `marketplace_db`                     | Database name.                                           |
 | `POSTGRES_USER`               | no       | `myuser`                             | Database user.                                           |
 | `POSTGRES_PASSWORD`           | yes      | —                                    | Database password.                                       |
@@ -283,17 +302,23 @@ See `.env.example` for a ready-to-copy template.
 | `SMS_API_KEY`                 | no       | empty                                | SMS provider API key.                                    |
 | `DJANGO_SECRET_KEY_FILE`      | no       | `marketplace/.secret_key`            | File used by the rotation task. Overrides `DJANGO_SECRET_KEY` when present. |
 | `SECRET_KEY_ROTATION_DAYS`    | no       | `7`                                  | Rotate the secret key every N days. `0` disables rotation. |
+| `DJANGO_SECURE_SSL_REDIRECT`  | no       | `True` (prod)                        | Redirect HTTP to HTTPS.                                  |
+| `DJANGO_SECURE_HSTS_SECONDS`  | no       | `31536000` (prod)                    | HSTS max-age in seconds. `0` disables HSTS.              |
+| `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS` | no | `True` (prod)                     | Apply HSTS to subdomains.                                |
+| `DJANGO_SECURE_HSTS_PRELOAD`  | no       | `True` (prod)                        | Allow HSTS preload list submission.                      |
+| `DJANGO_SESSION_COOKIE_SECURE`| no       | `True` (prod)                        | Send the session cookie over HTTPS only.                 |
+| `DJANGO_CSRF_COOKIE_SECURE`   | no       | `True` (prod)                        | Send the CSRF cookie over HTTPS only.                    |
 
-\* Required in production (`DJANGO_DEBUG=False`).
+\* Required by `marketplace.settings.prod`.
 
 ---
 
 ## Running the tests
 
-The suite contains **196 tests**: 184 unit/integration tests and 12 browser
-end-to-end tests. It does not require Redis: it switches to an in-memory cache
-and a fast password hasher. Browser tests need Playwright (see below); without
-it they are skipped.
+The suite contains **203 tests**: 190 unit/integration tests and 13 browser
+end-to-end tests. It does not require Redis: `marketplace.settings.test`
+switches to an in-memory cache and a fast password hasher. Browser tests need
+Playwright (see below); without it they are skipped.
 
 ```bash
 cd marketplace
@@ -451,12 +476,16 @@ different keys and reject each other's sessions.
 
 Before deploying:
 
-- set `DJANGO_DEBUG=False` and a strong `DJANGO_SECRET_KEY`;
-- configure HTTPS and set `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`,
-  `SECURE_SSL_REDIRECT` and HSTS;
-- run `python manage.py check --deploy`;
+- set a strong `DJANGO_SECRET_KEY` and real `DJANGO_ALLOWED_HOSTS`;
+- use `marketplace.settings.prod` (WSGI/ASGI already default to it);
+- make sure the reverse proxy sends `X-Forwarded-Proto: https`;
+- run `python manage.py check --deploy` with the production settings;
 - run `python manage.py collectstatic`;
 - serve the app with Gunicorn behind a reverse proxy.
+
+`settings.prod` enables `SECURE_SSL_REDIRECT`, HSTS, `SESSION_COOKIE_SECURE`,
+`CSRF_COOKIE_SECURE`, `X_FRAME_OPTIONS=DENY` and `SECURE_CONTENT_TYPE_NOSNIFF`.
+They can be relaxed through environment variables while TLS is being set up.
 
 ---
 
@@ -465,8 +494,8 @@ Before deploying:
 - No API layer (DRF); everything is server-rendered.
 - Automatic secret rotation only takes effect after a process restart, and
   needs shared storage when running several instances.
-- `debug_toolbar` is installed unconditionally and should be moved to a
-  development-only settings module.
+- Full-text search uses `icontains`; a PostgreSQL trigram index would make it
+  scale better.
 - Payment and SMS integrations are tested with mocks; no sandbox end-to-end
   tests are included.
 

@@ -66,6 +66,20 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            # Profile: orders of one user, newest first.
+            models.Index(
+                fields=["user", "-created_at"], name="order_user_created_idx"
+            ),
+            # Vendor dashboard: filter by status, newest first.
+            models.Index(
+                fields=["status", "-created_at"], name="order_status_created_idx"
+            ),
+            # LiqPay callback lookup by payment id.
+            models.Index(fields=["payment_id"], name="order_payment_id_idx"),
+        ]
+
     def __str__(self):
         return f"Замовлення #{self.id} - {self.get_status_display()}"
 
