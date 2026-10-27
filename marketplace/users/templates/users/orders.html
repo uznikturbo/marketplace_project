@@ -25,6 +25,7 @@
         overflow: hidden;
     }
     {% include "users/_styles_nav.html" %}
+    {% include "core/_styles_pagination.html" %}
 
     .profile-avatar {
         width: 56px;
@@ -469,6 +470,8 @@
                 <a href="{% url 'catalog' %}" class="btn-go-catalog">Перейти до каталогу</a>
             </div>
         {% endif %}
+
+        {% include "core/_pagination.html" %}
 
     </section>
 

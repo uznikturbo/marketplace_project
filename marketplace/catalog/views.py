@@ -1,15 +1,16 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from . import models
-from .decorators import confirmed_required
-from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .utils import get_user_cart, get_all_subcategories_ids, get_favorite_ids
-from .models import CartItem
-from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
-from django.core.cache import cache
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
+from core.pagination import paginate
+
+from . import models
+from .decorators import confirmed_required
+from .models import CartItem
+from .utils import get_all_subcategories_ids, get_favorite_ids, get_user_cart
 
 CATALOG_PAGE_SIZE = 12
 
@@ -65,8 +66,7 @@ def catalog_view(request):
             # Неіснуюча категорія не повинна показувати весь каталог.
             products = products.none()
 
-    paginator = Paginator(products, CATALOG_PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get("page"))
+    page_obj, page_range = paginate(request, products, CATALOG_PAGE_SIZE)
 
     return render(
         request,
@@ -74,8 +74,7 @@ def catalog_view(request):
         {
             "products": page_obj.object_list,
             "page_obj": page_obj,
-            "paginator": paginator,
-            "page_range": paginator.get_elided_page_range(page_obj.number),
+            "page_range": page_range,
             "categories": categories,
             "query": query,
             "current_category_id": current_category_id,
@@ -231,16 +230,30 @@ def wishlist_view(request):
     if request.user.is_authenticated:
         favorites = (
             models.Favorite.objects.filter(user=request.user)
-            .select_related("product")
+            .select_related("product", "product__category")
+            .prefetch_related("product__images", "product__discounts")
             .order_by("-created_at")
         )
-        products = [f.product for f in favorites]
+        page_obj, page_range = paginate(request, favorites, 12)
+        products = [favorite.product for favorite in page_obj.object_list]
     else:
         favorite_ids = request.session.get("favorites", [])
-        products = list(models.Product.objects.filter(id__in=favorite_ids))
+        favorite_products = (
+            models.Product.objects.filter(id__in=favorite_ids)
+            .select_related("category")
+            .prefetch_related("images", "discounts")
+            .order_by("-created_at")
+        )
+        page_obj, page_range = paginate(request, favorite_products, 12)
+        products = page_obj.object_list
 
     return render(
         request,
         "catalog/wishlist.html",
-        {"products": products, "user_favorite_ids": get_favorite_ids(request)},
+        {
+            "products": products,
+            "page_obj": page_obj,
+            "page_range": page_range,
+            "user_favorite_ids": get_favorite_ids(request),
+        },
     )

@@ -50,6 +50,7 @@
         color: inherit;
     }
     {% include "catalog/_styles_wishlist.html" %}
+    {% include "core/_styles_pagination.html" %}
 
     /* Кнопка видалення з обраного */
     .btn-remove-wish {
@@ -182,7 +183,7 @@
 <div class="wishlist-header">
     <h1 class="wishlist-title">Список бажань</h1>
     {% if products %}
-        <span class="wishlist-count">{{ products|length }} товар{{ products|length|pluralize:",,ів" }}</span>
+        <span class="wishlist-count">{{ page_obj.paginator.count }} товар{{ page_obj.paginator.count|pluralize:",,ів" }}</span>
     {% endif %}
 </div>
 
@@ -275,6 +276,8 @@
 {% else %}
     {% include "catalog/_wishlist_empty.html" %}
 {% endif %}
+
+{% include "core/_pagination.html" %}
 
 {% endblock %}
 

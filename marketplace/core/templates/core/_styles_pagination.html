@@ -1,0 +1,15 @@
+.pagination {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 8px; margin: 32px 0 8px;
+}
+.page-btn {
+    min-width: 40px; height: 40px; padding: 0 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--white); border: 1px solid var(--gray-4); border-radius: var(--radius);
+    color: var(--gray-1); font-size: 14px; font-weight: 600; text-decoration: none;
+    transition: border-color .2s, color .2s, background .2s;
+}
+a.page-btn:hover { border-color: var(--green); color: var(--green); }
+.page-btn.active { background: var(--green); border-color: var(--green); color: var(--white); }
+.page-btn.disabled { opacity: .45; }
+.page-ellipsis { color: var(--gray-3); padding: 0 4px; }

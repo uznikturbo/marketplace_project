@@ -42,6 +42,7 @@
         margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
     }
     {% include "vendors/_styles_tables.html" %}
+    {% include "core/_styles_pagination.html" %}
 
     /* ── СТАТИСТИКА ── */
     .stats-grid {
@@ -272,6 +273,8 @@
             <p>За обраними фільтрами у вас ще немає продажів.</p>
         </div>
         {% endif %}
+
+        {% include "core/_pagination.html" %}
     </div>
 </div>
 {% endblock %}

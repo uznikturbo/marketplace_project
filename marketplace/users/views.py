@@ -1,17 +1,23 @@
-from django.shortcuts import render, redirect
+import json
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
+
 from catalog.models import Favorite
 from catalog.utils import get_favorite_ids
+from core.pagination import paginate
+from orders.models import Order
+from registration.tasks import send_sms_conf_task
+from registration.utils import generate_code
 
 from .forms import CustomUserChangeForm
-from orders.models import Order
-from django.http import JsonResponse
-from django.core.cache import cache
-from django.views.decorators.http import require_POST
-from registration.utils import generate_code
-import json
-from registration.tasks import send_sms_conf_task
+
+PROFILE_PAGE_SIZE = 10
+WISHLIST_PAGE_SIZE = 12
 
 
 @login_required
@@ -35,14 +41,21 @@ def profile_view(request):
 def profile_wishlist_view(request):
     favorites = (
         Favorite.objects.filter(user=request.user)
-        .select_related("product")
+        .select_related("product", "product__category")
+        .prefetch_related("product__images", "product__discounts")
         .order_by("-created_at")
     )
-    products = [f.product for f in favorites]
+    page_obj, page_range = paginate(request, favorites, WISHLIST_PAGE_SIZE)
+    products = [favorite.product for favorite in page_obj.object_list]
     return render(
         request,
         "users/wishlist.html",
-        {"products": products, "user_favorite_ids": get_favorite_ids(request)},
+        {
+            "products": products,
+            "page_obj": page_obj,
+            "page_range": page_range,
+            "user_favorite_ids": get_favorite_ids(request),
+        },
     )
 
 
@@ -53,7 +66,16 @@ def profile_orders_view(request):
         .prefetch_related("items")
         .order_by("-created_at")
     )
-    return render(request, "users/orders.html", {"orders": orders})
+    page_obj, page_range = paginate(request, orders, PROFILE_PAGE_SIZE)
+    return render(
+        request,
+        "users/orders.html",
+        {
+            "orders": page_obj.object_list,
+            "page_obj": page_obj,
+            "page_range": page_range,
+        },
+    )
 
 
 @login_required

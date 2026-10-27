@@ -7,7 +7,14 @@ from django.utils import timezone
 from catalog.models import Product, ProductDiscount
 from orders.models import OrderItem, OrderStatus, PaymentMethod
 
-from .base import BaseTestCase, make_category, make_order, make_product, make_user, make_vendor
+from .base import (
+    BaseTestCase,
+    make_category,
+    make_order,
+    make_product,
+    make_user,
+    make_vendor,
+)
 
 
 class VendorAccessTests(BaseTestCase):
@@ -257,8 +264,8 @@ class VendorOrderTests(BaseTestCase):
         response = self.client.get(reverse("vendor_orders"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f"#{self.order.id}")
-        self.assertNotContains(response, f"#{self.foreign_order.id}")
+        self.assertContains(response, f"#{self.order.id}</strong>")
+        self.assertNotContains(response, f"#{self.foreign_order.id}</strong>")
 
     def test_vendor_order_detail_is_available(self):
         response = self.client.get(
@@ -297,3 +304,41 @@ class VendorOrderTests(BaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, OrderStatus.NEW)
+
+
+class VendorPaginationTests(BaseTestCase):
+    def test_vendor_products_are_paginated(self):
+        vendor = make_vendor()
+        for i in range(21):
+            make_product(vendor=vendor, name=f"Vendor product {i:02d}")
+        self.client.force_login(vendor)
+
+        first = self.client.get(reverse("vendor_view"))
+        second = self.client.get(reverse("vendor_view"), {"page": 2})
+
+        self.assertEqual(len(first.context["vendor_products"]), 20)
+        self.assertEqual(first.context["page_obj"].paginator.count, 21)
+        self.assertEqual(len(second.context["vendor_products"]), 1)
+        self.assertContains(first, 'class="pagination"')
+
+    def test_vendor_orders_are_paginated(self):
+        vendor = make_vendor()
+        product = make_product(vendor=vendor, price=Decimal("10.00"))
+        for _ in range(21):
+            order = make_order(user=make_user())
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                name=product.name,
+                price=Decimal("10.00"),
+                quantity=1,
+            )
+        self.client.force_login(vendor)
+
+        first = self.client.get(reverse("vendor_orders"))
+        second = self.client.get(reverse("vendor_orders"), {"page": 2})
+
+        self.assertEqual(len(first.context["orders"]), 20)
+        self.assertEqual(first.context["page_obj"].paginator.count, 21)
+        self.assertEqual(len(second.context["orders"]), 1)
+        self.assertContains(first, 'class="pagination"')

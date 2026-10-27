@@ -79,13 +79,13 @@ class CatalogPaginationTests(BaseTestCase):
         return [make_product(name=f"Paged product {i:02d}") for i in range(count)]
 
     def test_first_page_contains_page_size_products(self):
-        products = self._create_products(13)
+        self._create_products(13)
 
         response = self.client.get(reverse("catalog"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["products"]), 12)
-        self.assertEqual(response.context["paginator"].count, 13)
+        self.assertEqual(response.context["page_obj"].paginator.count, 13)
         self.assertTrue(response.context["page_obj"].has_next())
 
     def test_second_page_contains_the_rest(self):
@@ -134,7 +134,7 @@ class CatalogPaginationTests(BaseTestCase):
 
         response = self.client.get(reverse("catalog"))
 
-        self.assertEqual(response.context["paginator"].count, 12)
+        self.assertEqual(response.context["page_obj"].paginator.count, 12)
         self.assertNotContains(response, 'class="pagination"')
 
 
@@ -451,3 +451,19 @@ class CartContextProcessorTests(BaseTestCase):
         self.client.get(reverse("catalog"))
 
         self.assertEqual(Cart.objects.count(), 0)
+
+
+class WishlistPaginationTests(BaseTestCase):
+    def test_anonymous_wishlist_is_paginated(self):
+        products = [make_product(name=f"Wishlist item {i:02d}") for i in range(13)]
+        session = self.client.session
+        session["favorites"] = [product.id for product in products]
+        session.save()
+
+        first = self.client.get(reverse("wishlist_view"))
+        second = self.client.get(reverse("wishlist_view"), {"page": 2})
+
+        self.assertEqual(len(first.context["products"]), 12)
+        self.assertEqual(first.context["page_obj"].paginator.count, 13)
+        self.assertEqual(len(second.context["products"]), 1)
+        self.assertContains(first, 'class="pagination"')

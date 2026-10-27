@@ -54,6 +54,7 @@
         gap: 16px;
     }
     {% include "vendors/_styles_tables.html" %}
+    {% include "core/_styles_pagination.html" %}
 
     .btn-add {
         background: var(--green);
@@ -288,6 +289,8 @@
                 <p>Додайте свій перший товар, щоб розпочати продажі на маркетплейсі.</p>
             </div>
         {% endif %}
+
+        {% include "core/_pagination.html" %}
     </div>
 </div>
 {% endblock %}

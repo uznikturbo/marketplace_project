@@ -1,23 +1,39 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from .decorators import vendor_required
-from catalog.models import Product
-from .forms import CreateProductForm, ProductImageFormSet, CreateProductDiscountForm
-from django.contrib import messages
-from django.views.decorators.http import require_POST
-from django.utils import timezone
-from orders.models import Order, PaymentStatus, OrderStatus
-from django.db.models import Q, F, Sum
 from datetime import timedelta
+
+from django.contrib import messages
+from django.db.models import F, Q, Sum
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from catalog.models import Product
+from core.pagination import paginate
+from orders.models import Order, OrderStatus, PaymentStatus
+
+from .decorators import vendor_required
+from .forms import CreateProductDiscountForm, CreateProductForm, ProductImageFormSet
+
+VENDOR_PAGE_SIZE = 20
 
 
 # Create your views here.
 @vendor_required
 def vendor_view(request):
-    vendor_products = Product.objects.filter(user=request.user)
+    vendor_products = (
+        Product.objects.filter(user=request.user)
+        .select_related("category")
+        .prefetch_related("images", "discounts")
+        .order_by("-created_at")
+    )
+    page_obj, page_range = paginate(request, vendor_products, VENDOR_PAGE_SIZE)
     return render(
         request,
         "vendors/vendor.html",
-        {"vendor_products": vendor_products},
+        {
+            "vendor_products": page_obj.object_list,
+            "page_obj": page_obj,
+            "page_range": page_range,
+        },
     )
 
 
@@ -143,8 +159,14 @@ def vendor_orders_view(request):
 
     total_orders_count = stats_orders.count()
 
+    page_obj, page_range = paginate(
+        request, orders.order_by("-created_at"), VENDOR_PAGE_SIZE
+    )
+
     context = {
-        "orders": orders.order_by("-created_at"),
+        "orders": page_obj.object_list,
+        "page_obj": page_obj,
+        "page_range": page_range,
         "total_revenue": total_revenue,
         "total_orders_count": total_orders_count,
         "period": period,

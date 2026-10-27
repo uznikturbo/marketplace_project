@@ -85,6 +85,7 @@
         background: var(--white);
     }
     {% include "catalog/_styles_wishlist.html" %}
+    {% include "core/_styles_pagination.html" %}
 
     .btn-remove-wish {
         position: absolute; top: 8px; right: 8px;
@@ -206,7 +207,7 @@
         <h1>Список бажань</h1>
         <p class="wish-subtitle">
             {% if products %}
-                {{ products|length }} товар{% if products|length == 1 %}{% elif products|length|divisibleby:1 %}ів{% endif %} в обраному
+                {{ page_obj.paginator.count }} товар{% if page_obj.paginator.count == 1 %}{% elif page_obj.paginator.count|divisibleby:1 %}ів{% endif %} в обраному
             {% else %}
                 Тут будуть збережені ваші улюблені товари
             {% endif %}
@@ -286,6 +287,9 @@
         {% else %}
             {% include "catalog/_wishlist_empty.html" %}
         {% endif %}
+
+        {% include "core/_pagination.html" %}
+
     </section>
 
 </div>

@@ -89,8 +89,8 @@ class ProfileTests(BaseTestCase):
         response = self.client.get(reverse("profile_orders"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f"#{mine.id}")
-        self.assertNotContains(response, f"#{foreign.id}")
+        self.assertContains(response, f"Замовлення #{mine.id}")
+        self.assertNotContains(response, f"Замовлення #{foreign.id}")
 
     def test_profile_wishlist_shows_favorites(self):
         user = make_user()
@@ -226,3 +226,33 @@ class SmsVerificationTests(BaseTestCase):
         response = self._verify("123456")
 
         self.assertEqual(response.status_code, 400)
+
+
+class ProfilePaginationTests(BaseTestCase):
+    def test_profile_orders_are_paginated(self):
+        user = make_user()
+        for _ in range(11):
+            make_order(user=user)
+        self.client.force_login(user)
+
+        first = self.client.get(reverse("profile_orders"))
+        second = self.client.get(reverse("profile_orders"), {"page": 2})
+
+        self.assertEqual(len(first.context["orders"]), 10)
+        self.assertEqual(first.context["page_obj"].paginator.count, 11)
+        self.assertEqual(len(second.context["orders"]), 1)
+        self.assertContains(first, 'class="pagination"')
+
+    def test_profile_wishlist_is_paginated(self):
+        user = make_user()
+        for i in range(13):
+            Favorite.objects.create(user=user, product=make_product(name=f"Fav {i:02d}"))
+        self.client.force_login(user)
+
+        first = self.client.get(reverse("profile_wishlist"))
+        second = self.client.get(reverse("profile_wishlist"), {"page": 2})
+
+        self.assertEqual(len(first.context["products"]), 12)
+        self.assertEqual(first.context["page_obj"].paginator.count, 13)
+        self.assertEqual(len(second.context["products"]), 1)
+        self.assertContains(first, 'class="pagination"')
