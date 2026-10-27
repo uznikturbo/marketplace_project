@@ -185,12 +185,8 @@ sudo -u postgres psql -c "CREATE DATABASE marketplace_db OWNER myuser;"
 
 ### 4. Apply migrations
 
-Migration files are generated locally and are not tracked in this
-repository yet, so create them first:
-
 ```bash
 cd marketplace
-python manage.py makemigrations
 python manage.py migrate
 ```
 
@@ -372,10 +368,6 @@ Before deploying:
 
 - No API layer (DRF); everything is server-rendered.
 - No CI pipeline yet.
-- Migration files are not committed, so a fresh clone must run
-  `makemigrations` (see step 4).
-- `staticfiles/` (collected assets) is currently tracked in git; ideally it
-  should be generated during deployment.
 - `debug_toolbar` is installed unconditionally and should be moved to a
   development-only settings module.
 - Payment and SMS integrations are tested with mocks; no sandbox end-to-end
