@@ -225,10 +225,20 @@ class CatalogUITests(UITestCase):
             "Дешевий товар"
         )
 
+        expect(self.page.locator(".wishlist-label").first).to_be_hidden()
+
         self.page.locator('.view-btn[data-view="list"]').click()
         expect(self.page.locator("#products-grid")).to_have_class(
             re.compile(r"\blist-view\b")
         )
+
+        card = self.page.locator(".products-grid .product-card").first
+        wishlist = card.locator("button.card-wishlist")
+        expect(wishlist.locator(".wishlist-label")).to_be_visible()
+        expect(wishlist.locator(".wishlist-label")).to_have_text("До обраного")
+
+        wishlist.click()
+        expect(wishlist.locator(".wishlist-label")).to_have_text("В обраному")
 
     def test_add_to_cart_from_catalog_card(self):
         make_product(name="Каталог Кошик", quantity=5)

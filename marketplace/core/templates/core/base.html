@@ -620,6 +620,7 @@
                 const url = this.getAttribute('data-url');
                 if (!url) return; // захист якщо data-url відсутній
                 const svg = this.querySelector('svg');
+                const label = this.querySelector('.wishlist-label');
 
                 fetch(url, {
                     method: 'GET',
@@ -631,10 +632,12 @@
                         this.classList.add('active');
                         svg.setAttribute('fill', 'var(--red)');
                         svg.setAttribute('stroke', 'var(--red)');
+                        if (label) label.textContent = 'В обраному';
                     } else {
                         this.classList.remove('active');
                         svg.setAttribute('fill', 'none');
                         svg.setAttribute('stroke', 'currentColor');
+                        if (label) label.textContent = 'До обраного';
                     }
                 })
                 .catch(err => console.error('Wishlist error:', err));

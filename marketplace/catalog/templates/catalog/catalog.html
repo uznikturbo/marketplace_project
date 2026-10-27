@@ -167,6 +167,35 @@
         color: var(--gray-3); transition: color .2s, transform .2s; z-index: 2;
     }
     .card-wishlist svg { width: 16px; height: 16px; }
+    .card-wishlist .wishlist-label { display: none; }
+    .products-grid.list-view .card-wishlist {
+        position: static;
+        order: 3;
+        width: auto;
+        height: 40px;
+        padding: 0 14px;
+        gap: 7px;
+        align-self: center;
+        margin-right: 18px;
+        border: 1px solid var(--gray-4);
+        border-radius: var(--radius);
+        box-shadow: none;
+        font-family: var(--font);
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .products-grid.list-view .card-wishlist .wishlist-label { display: inline; }
+    .products-grid.list-view .card-wishlist:hover {
+        border-color: var(--red);
+        color: var(--red);
+        transform: none;
+    }
+    .products-grid.list-view .card-wishlist.active {
+        border-color: var(--red);
+        color: var(--red);
+        background: #fff5f5;
+    }
     .card-img svg { width: 80px; height: 80px; color: var(--gray-3); }
 
     .card-body { padding: 14px; display: flex; flex-direction: column; flex: 1; gap: 8px; }
@@ -210,6 +239,13 @@
         .products-grid.list-view .card-body { padding: 12px 44px 12px 12px; gap: 5px; }
         .products-grid.list-view .card-category { display: none; }
         .products-grid.list-view .card-rating-row { display: none; }
+        .products-grid.list-view .card-wishlist {
+            position: absolute; top: 8px; right: 8px; order: 0;
+            width: 32px; height: 32px; padding: 0; margin: 0;
+            border: none; border-radius: 50%;
+            box-shadow: 0 1px 6px rgba(0,0,0,.12);
+        }
+        .products-grid.list-view .card-wishlist .wishlist-label { display: none; }
         .products-grid.list-view .card-price { font-size: 16px; }
         .products-grid.list-view .btn-cart { padding: 7px 10px; font-size: 12px; }
     }
@@ -362,7 +398,7 @@
                     {% endif %}
 
                     <!-- Зверни увагу: я додав клас active, якщо товар в обраному, і data-id -->
-                    <button class="card-wishlist fav-btn {% if product.id in user_favorite_ids %}active{% endif %}"
+                    <button type="button" class="card-wishlist fav-btn {% if product.id in user_favorite_ids %}active{% endif %}"
                             data-url="{% url 'toggle_favorite' product.id %}"
                             title="Додати до обраного">
 
@@ -372,6 +408,7 @@
                             viewBox="0 0 24 24">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                         </svg>
+                        <span class="wishlist-label">{% if product.id in user_favorite_ids %}В обраному{% else %}До обраного{% endif %}</span>
                     </button>
 
                     <div class="card-img">
