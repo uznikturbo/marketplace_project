@@ -1,8 +1,19 @@
 from django.contrib import messages
 from django.core.cache import cache
-from django.db.models import Avg, Count, Q
+from django.db.models import (
+    Avg,
+    Count,
+    IntegerField,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.pagination import paginate
@@ -19,16 +30,31 @@ CATALOG_SORT_OPTIONS = {
     "price_asc": ("price", "-created_at"),
     "price_desc": ("-price", "-created_at"),
     "newest": ("-created_at",),
+    "top": ("-sales_count", "-created_at"),
+}
+CATALOG_PRESETS = {
+    "promotions": {"title": "Акції", "default_sort": "popular"},
+    "new": {"title": "Новинки", "default_sort": "newest"},
+    "top": {"title": "Топ продажів", "default_sort": "top"},
 }
 
 
 # Create your views here.
-def catalog_view(request):
+def catalog_view(request, preset=None):
+    preset_config = CATALOG_PRESETS.get(preset)
+    page_title = (
+        preset_config["title"] if preset_config else "Каталог товарів"
+    )
+    default_sort = (
+        preset_config["default_sort"]
+        if preset_config
+        else CATALOG_DEFAULT_SORT
+    )
     query = request.GET.get("q")
     raw_category_id = request.GET.get("category")
-    sort = request.GET.get("sort", CATALOG_DEFAULT_SORT)
+    sort = request.GET.get("sort", default_sort)
     if sort not in CATALOG_SORT_OPTIONS:
-        sort = CATALOG_DEFAULT_SORT
+        sort = default_sort
 
     current_category_id = None
     if raw_category_id:
@@ -48,9 +74,8 @@ def catalog_view(request):
         .prefetch_related("images", "discounts")
         .annotate(
             annotated_avg_rating=Avg("ratings__rating"),
-            annotated_ratings_count=Count("ratings"),
+            annotated_ratings_count=Count("ratings", distinct=True),
         )
-        .order_by(*CATALOG_SORT_OPTIONS[sort])
     )
 
     if query:
@@ -76,6 +101,36 @@ def catalog_view(request):
             # Неіснуюча категорія не повинна показувати весь каталог.
             products = products.none()
 
+    if preset == "promotions":
+        now = timezone.now()
+        products = products.filter(
+            discounts__start_at__lte=now,
+            discounts__end_at__gte=now,
+        ).distinct()
+
+    if preset == "top" or sort == "top":
+        # Imported lazily to keep the catalog app independent at import time.
+        from orders.models import OrderItem, OrderStatus
+
+        sales = (
+            OrderItem.objects.filter(product=OuterRef("pk"))
+            .exclude(order__status=OrderStatus.CANCELLED)
+            .values("product")
+            .annotate(total=Sum("quantity"))
+            .values("total")
+        )
+        products = products.annotate(
+            sales_count=Coalesce(
+                Subquery(sales, output_field=IntegerField()),
+                Value(0),
+            )
+        )
+
+    if preset == "top":
+        products = products.filter(sales_count__gt=0)
+
+    products = products.order_by(*CATALOG_SORT_OPTIONS[sort])
+
     page_obj, page_range = paginate(request, products, CATALOG_PAGE_SIZE)
 
     return render(
@@ -89,6 +144,9 @@ def catalog_view(request):
             "query": query,
             "current_category_id": current_category_id,
             "sort": sort,
+            "page_title": page_title,
+            "preset": preset,
+            "show_sort": preset != "top",
             "user_favorite_ids": get_favorite_ids(request),
         },
     )

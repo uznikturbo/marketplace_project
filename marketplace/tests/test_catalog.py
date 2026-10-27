@@ -1,10 +1,25 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.urls import reverse
+from django.utils import timezone
 
-from catalog.models import Cart, CartItem, Favorite, ProductRating
+from catalog.models import (
+    Cart,
+    CartItem,
+    Favorite,
+    ProductDiscount,
+    ProductRating,
+)
+from orders.models import OrderItem, OrderStatus
 
-from .base import BaseTestCase, make_category, make_product, make_user
+from .base import (
+    BaseTestCase,
+    make_category,
+    make_order,
+    make_product,
+    make_user,
+)
 
 
 class CatalogViewTests(BaseTestCase):
@@ -526,3 +541,88 @@ class CatalogSortingTests(BaseTestCase):
         )
 
         self.assertContains(response, "sort=price_asc&amp;page=1")
+
+
+class CatalogPresetTests(BaseTestCase):
+    def test_promotions_page_lists_only_active_discounts(self):
+        now = timezone.now()
+        discounted = make_product(name="Discounted product")
+        make_product(name="Regular product")
+        ProductDiscount.objects.create(
+            product=discounted,
+            value=15,
+            start_at=now - timedelta(days=1),
+            end_at=now + timedelta(days=1),
+        )
+
+        response = self.client.get(reverse("promotions"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, discounted.name)
+        self.assertNotContains(response, "Regular product")
+
+    def test_promotions_page_hides_expired_discounts(self):
+        now = timezone.now()
+        expired = make_product(name="Expired product")
+        ProductDiscount.objects.create(
+            product=expired,
+            value=15,
+            start_at=now - timedelta(days=5),
+            end_at=now - timedelta(days=1),
+        )
+
+        response = self.client.get(reverse("promotions"))
+
+        self.assertContains(response, "Акцій зараз немає")
+        self.assertNotContains(response, expired.name)
+
+    def test_new_arrivals_page_sorts_by_newest(self):
+        make_product(name="Older arrival")
+        make_product(name="Newest arrival")
+
+        response = self.client.get(reverse("new_arrivals"))
+
+        names = [product.name for product in response.context["products"]]
+        self.assertEqual(names, ["Newest arrival", "Older arrival"])
+
+    def test_top_sales_page_orders_by_quantity_sold(self):
+        best = make_product(name="Best seller")
+        slow = make_product(name="Slow seller")
+
+        best_order = make_order(user=make_user(), status=OrderStatus.COMPLETED)
+        OrderItem.objects.create(
+            order=best_order,
+            product=best,
+            name=best.name,
+            price=best.price,
+            quantity=5,
+        )
+        slow_order = make_order(user=make_user(), status=OrderStatus.COMPLETED)
+        OrderItem.objects.create(
+            order=slow_order,
+            product=slow,
+            name=slow.name,
+            price=slow.price,
+            quantity=1,
+        )
+
+        response = self.client.get(reverse("top_sales"))
+
+        names = [product.name for product in response.context["products"]]
+        self.assertEqual(names, ["Best seller", "Slow seller"])
+
+    def test_top_sales_page_ignores_cancelled_orders(self):
+        product = make_product(name="Cancelled seller")
+        order = make_order(user=make_user(), status=OrderStatus.CANCELLED)
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            name=product.name,
+            price=product.price,
+            quantity=10,
+        )
+
+        response = self.client.get(reverse("top_sales"))
+
+        self.assertContains(response, "Ще немає продажів")
+        self.assertNotContains(response, product.name)

@@ -77,3 +77,42 @@ class TimezoneMiddlewareTests(BaseTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(self.client.session.get("user_timezone"))
+
+
+class InfoPageTests(BaseTestCase):
+    PAGES = [
+        ("about", "Про компанію"),
+        ("careers", "Вакансії"),
+        ("news", "Новини"),
+        ("contacts", "Контакти"),
+        ("how_to_order", "Як зробити замовлення"),
+        ("delivery", "Доставка і оплата"),
+        ("warranty", "Гарантія і повернення"),
+        ("service_centers", "Сервісні центри"),
+        ("become_a_seller", "Стати продавцем"),
+        ("advertising", "Реклама на сайті"),
+        ("affiliate", "Affiliate програма"),
+        ("support", "Чат підтримки"),
+    ]
+
+    def test_info_pages_render(self):
+        for name, title in self.PAGES:
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, title)
+                self.assertNotContains(response, "{'title'")
+
+    def test_unknown_info_page_returns_404(self):
+        response = self.client.get("/unknown-page/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_header_and_footer_links_resolve(self):
+        response = self.client.get(reverse("home"))
+
+        for name, _ in self.PAGES:
+            self.assertContains(response, f'href="{reverse(name)}"')
+
+        for name in ("promotions", "new_arrivals", "top_sales"):
+            self.assertContains(response, f'href="{reverse(name)}"')

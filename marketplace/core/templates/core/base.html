@@ -525,12 +525,14 @@
 <!-- NAV -->
 <nav class="nav">
     <div class="nav-inner">
-        <a href="/catalog/">Каталог</a>
-        <a href="#">Акції</a>
-        <a href="#">Новинки</a>
-        <a href="#">Топ продажів</a>
-        <a href="#">Доставка і оплата</a>
-        <a href="#">Контакти</a>
+        {% with current=request.resolver_match.url_name %}
+        <a href="/catalog/" class="{% if current == 'catalog' %}active{% endif %}">Каталог</a>
+        <a href="{% url 'promotions' %}" class="{% if current == 'promotions' %}active{% endif %}">Акції</a>
+        <a href="{% url 'new_arrivals' %}" class="{% if current == 'new_arrivals' %}active{% endif %}">Новинки</a>
+        <a href="{% url 'top_sales' %}" class="{% if current == 'top_sales' %}active{% endif %}">Топ продажів</a>
+        <a href="{% url 'delivery' %}" class="{% if current == 'delivery' %}active{% endif %}">Доставка і оплата</a>
+        <a href="{% url 'contacts' %}" class="{% if current == 'contacts' %}active{% endif %}">Контакти</a>
+        {% endwith %}
     </div>
 </nav>
 
@@ -559,35 +561,35 @@
         <div class="footer-col">
             <h4>Marketplace</h4>
             <ul>
-                <li><a href="#">Про компанію</a></li>
-                <li><a href="#">Вакансії</a></li>
-                <li><a href="#">Новини</a></li>
-                <li><a href="#">Контакти</a></li>
+                <li><a href="{% url 'about' %}">Про компанію</a></li>
+                <li><a href="{% url 'careers' %}">Вакансії</a></li>
+                <li><a href="{% url 'news' %}">Новини</a></li>
+                <li><a href="{% url 'contacts' %}">Контакти</a></li>
             </ul>
         </div>
         <div class="footer-col">
             <h4>Допомога</h4>
             <ul>
-                <li><a href="#">Як зробити замовлення</a></li>
-                <li><a href="#">Доставка і оплата</a></li>
-                <li><a href="#">Гарантія і повернення</a></li>
-                <li><a href="#">Сервісні центри</a></li>
+                <li><a href="{% url 'how_to_order' %}">Як зробити замовлення</a></li>
+                <li><a href="{% url 'delivery' %}">Доставка і оплата</a></li>
+                <li><a href="{% url 'warranty' %}">Гарантія і повернення</a></li>
+                <li><a href="{% url 'service_centers' %}">Сервісні центри</a></li>
             </ul>
         </div>
         <div class="footer-col">
             <h4>Партнерам</h4>
             <ul>
-                <li><a href="#">Стати продавцем</a></li>
-                <li><a href="#">Реклама на сайті</a></li>
-                <li><a href="#">Affiliate програма</a></li>
+                <li><a href="{% url 'become_a_seller' %}">Стати продавцем</a></li>
+                <li><a href="{% url 'advertising' %}">Реклама на сайті</a></li>
+                <li><a href="{% url 'affiliate' %}">Affiliate програма</a></li>
             </ul>
         </div>
         <div class="footer-col">
             <h4>Контакти</h4>
             <ul>
-                <li><a href="#">0 800 303 303</a></li>
-                <li><a href="#">support@marketplace.ua</a></li>
-                <li><a href="#">Чат підтримки</a></li>
+                <li><a href="tel:+380800303303">0 800 303 303</a></li>
+                <li><a href="mailto:support@marketplace.ua">support@marketplace.ua</a></li>
+                <li><a href="{% url 'support' %}">Чат підтримки</a></li>
             </ul>
         </div>
     </div>

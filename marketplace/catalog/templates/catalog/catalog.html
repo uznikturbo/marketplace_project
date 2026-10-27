@@ -1,6 +1,6 @@
 {% extends "core/base.html" %}
 
-{% block title %}Каталог товарів — Marketplace{% endblock %}
+{% block title %}{{ page_title }} — Marketplace{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -9,6 +9,12 @@
         grid-template-columns: 260px 1fr;
         gap: 20px;
         align-items: start;
+    }
+    .catalog-heading {
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--dark);
+        margin: 2px 0 16px;
     }
 
     .sidebar {
@@ -256,7 +262,11 @@
 <div class="breadcrumb">
     <a href="/">Головна</a>
     <span class="breadcrumb-sep">›</span>
-    <span>Каталог товарів</span>
+    {% if preset %}
+        <a href="{% url 'catalog' %}">Каталог</a>
+        <span class="breadcrumb-sep">›</span>
+    {% endif %}
+    <span>{{ page_title }}</span>
 </div>
 {% endblock %}
 
@@ -343,6 +353,10 @@
     <!-- MAIN -->
     <div class="catalog-main">
 
+        {% if preset %}
+            <h1 class="catalog-heading">{{ page_title }}</h1>
+        {% endif %}
+
         <!-- TOOLBAR -->
         <div class="toolbar">
             <div class="toolbar-left">
@@ -353,6 +367,7 @@
                 {% endif %}
             </div>
             <div class="toolbar-right">
+                {% if show_sort %}
                 <form method="get" class="sort-form">
                     {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
                     {% if current_category_id %}<input type="hidden" name="category" value="{{ current_category_id }}">{% endif %}
@@ -363,6 +378,7 @@
                         <option value="newest" {% if sort == "newest" %}selected{% endif %}>Новинки</option>
                     </select>
                 </form>
+                {% endif %}
                 <div class="view-toggle" role="group" aria-label="Вигляд каталогу">
                     <button type="button" class="view-btn active" data-view="grid" title="Сітка" aria-pressed="true">
                         <svg fill="currentColor" viewBox="0 0 16 16">
@@ -484,10 +500,28 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
-                <h3>Товарів не знайдено</h3>
-                <p>Спробуйте змінити фільтри або обрати іншу категорію</p>
-                {% if query or current_category_id %}
-                    <a href="{% url 'catalog' %}" class="btn-reset">Скинути фільтри</a>
+                <h3>
+                    {% if preset == "promotions" %}
+                        Акцій зараз немає
+                    {% elif preset == "top" %}
+                        Ще немає продажів
+                    {% else %}
+                        Товарів не знайдено
+                    {% endif %}
+                </h3>
+                <p>
+                    {% if preset == "promotions" %}
+                        Загляньте пізніше — ми регулярно додаємо нові знижки.
+                    {% elif preset == "top" %}
+                        Топ продажів з'явиться, щойно покупці оформлять перші замовлення.
+                    {% else %}
+                        Спробуйте змінити фільтри або обрати іншу категорію
+                    {% endif %}
+                </p>
+                {% if not preset %}
+                    {% if query or current_category_id %}
+                        <a href="{% url 'catalog' %}" class="btn-reset">Скинути фільтри</a>
+                    {% endif %}
                 {% endif %}
             </div>
         {% endif %}

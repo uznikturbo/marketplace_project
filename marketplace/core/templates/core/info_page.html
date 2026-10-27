@@ -1,0 +1,129 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ page.title }} — Marketplace{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-page { max-width: 900px; margin: 0 auto; }
+    .info-hero {
+        background: linear-gradient(135deg, var(--green), var(--green-dark));
+        color: var(--white);
+        border-radius: var(--radius);
+        padding: 34px 32px;
+        margin-bottom: 18px;
+        box-shadow: var(--shadow);
+    }
+    .info-hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 10px; }
+    .info-hero p { font-size: 15px; line-height: 1.65; max-width: 700px; opacity: .95; }
+
+    .info-section {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 24px 28px;
+        margin-bottom: 14px;
+    }
+    .info-section h2 {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--dark);
+        margin-bottom: 10px;
+    }
+    .info-section p {
+        font-size: 14px;
+        line-height: 1.7;
+        color: var(--gray-1);
+    }
+    .info-section p + p { margin-top: 8px; }
+    .info-section ul { margin: 6px 0 0 20px; }
+    .info-section li {
+        font-size: 14px;
+        line-height: 1.7;
+        color: var(--gray-1);
+        margin-bottom: 6px;
+    }
+    .info-section a { color: var(--green); font-weight: 600; }
+    .info-section a:hover { text-decoration: underline; }
+
+    .info-cta {
+        background: var(--green-light);
+        border: 1px solid var(--green);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .info-cta p { font-size: 14px; color: var(--green-dark); font-weight: 600; }
+    .info-btn {
+        display: inline-block;
+        background: var(--green);
+        color: var(--white);
+        border-radius: var(--radius);
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 700;
+        white-space: nowrap;
+        transition: background .2s;
+    }
+    .info-btn:hover { background: var(--green-dark); }
+
+    @media (max-width: 600px) {
+        .info-hero { padding: 26px 20px; }
+        .info-hero h1 { font-size: 26px; }
+        .info-section { padding: 20px; }
+        .info-cta { align-items: flex-start; }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="/">Головна</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>{{ page.title }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="info-page">
+    <div class="info-hero">
+        <h1>{{ page.title }}</h1>
+        {% if page.lead %}<p>{{ page.lead }}</p>{% endif %}
+    </div>
+
+    {% for section in page.sections %}
+        <section class="info-section">
+            {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+            {% if section.text %}<p>{{ section.text }}</p>{% endif %}
+            {% if section.bullets %}
+                <ul>
+                    {% for item in section.bullets %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            {% if section.links %}
+                <ul>
+                    {% for link in section.links %}
+                        <li><a href="{{ link.href }}">{{ link.label }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+    {% endfor %}
+
+    {% if page.cta %}
+        <div class="info-cta">
+            <p>{{ page.cta.text }}</p>
+            {% if page.cta.url_name %}
+                <a href="{% url page.cta.url_name %}" class="info-btn">{{ page.cta.label }}</a>
+            {% else %}
+                <a href="{{ page.cta.url }}" class="info-btn">{{ page.cta.label }}</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

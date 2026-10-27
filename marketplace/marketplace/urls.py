@@ -19,9 +19,29 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
+from catalog import views as catalog_views
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("catalog/", include("catalog.urls")),
+    path(
+        "promotions/",
+        catalog_views.catalog_view,
+        {"preset": "promotions"},
+        name="promotions",
+    ),
+    path(
+        "new-arrivals/",
+        catalog_views.catalog_view,
+        {"preset": "new"},
+        name="new_arrivals",
+    ),
+    path(
+        "top-sales/",
+        catalog_views.catalog_view,
+        {"preset": "top"},
+        name="top_sales",
+    ),
     path("", include("core.urls")),
     path("registration/", include("registration.urls")),
     path("users/", include("users.urls")),

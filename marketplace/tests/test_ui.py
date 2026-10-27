@@ -161,6 +161,17 @@ class HomePageUITests(UITestCase):
         expect(self.page.locator(".products-scroll .product-card")).to_have_count(1)
         expect(self.page.locator(".products-scroll")).to_contain_text("Ноутбук Test")
 
+    def test_header_and_footer_navigation(self):
+        self.page.goto("/")
+
+        self.page.locator(".nav a", has_text="Новинки").click()
+        expect(self.page).to_have_url(re.compile(r"/new-arrivals/$"))
+        expect(self.page.locator("h1")).to_contain_text("Новинки")
+
+        self.page.locator(".footer a", has_text="Про компанію").click()
+        expect(self.page).to_have_url(re.compile(r"/about/$"))
+        expect(self.page.locator("h1")).to_contain_text("Про компанію")
+
     def test_category_card_opens_filtered_catalog(self):
         root = make_category("Електроніка")
         child = make_category("Ноутбуки", parent=root)

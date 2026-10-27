@@ -33,10 +33,14 @@ build step.
 ### Storefront
 
 - Product catalog with search, category filtering (including nested
-  categories) and caching of category trees.
+  categories), sorting, grid/list view and caching of category trees.
+- Promotions, new arrivals and top sales pages built on the catalog with
+  preset filters and ordering.
 - Product pages with average rating, reviews and active discounts.
 - Wishlist for both authenticated users and guests (session based).
 - Responsive templates with an inline design system.
+- Static information pages (company, delivery, warranty, partners,
+  support) linked from the header and footer.
 
 ### Cart and checkout
 
@@ -317,7 +321,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **216 tests**: 201 unit/integration tests and 15 browser
+The suite contains **225 tests**: 209 unit/integration tests and 16 browser
 end-to-end tests. It does not require Redis: `marketplace.settings.test`
 switches to an in-memory cache and a fast password hasher. Browser tests need
 Playwright (see below); without it they are skipped.
@@ -346,12 +350,12 @@ Test modules:
 | Module                     | What it covers                                                        |
 | -------------------------- | --------------------------------------------------------------------- |
 | `tests/test_models.py`     | Phone/e-mail normalization, uniqueness, ratings, prices, discounts, cart totals |
-| `tests/test_catalog.py`    | Catalog, search, sorting, categories, reviews, cart rules, favorites, cart merge |
+| `tests/test_catalog.py`    | Catalog, search, sorting, promotions/new/top pages, reviews, cart rules, favorites |
 | `tests/test_orders.py`     | Checkout, stock rollback, payments, LiqPay callback, Nova Poshta        |
 | `tests/test_users.py`      | Profile, order history, SMS send/verify limits                         |
 | `tests/test_vendors.py`    | Vendor access, product ownership, discounts, vendor orders             |
 | `tests/test_registration.py` | Registration, login and `next` safety, SMS task behavior            |
-| `tests/test_core.py`       | Home page, health check, favicon, timezone middleware                  |
+| `tests/test_core.py`       | Home page, info pages, header/footer links, health check, favicon, timezone |
 | `tests/test_secret_rotation.py` | Secret key file creation, permissions, task and management command |
 | `tests/test_ui.py`         | Playwright/Firefox: home, catalog, cart, login, profile, vendor form   |
 

@@ -9,6 +9,8 @@ from django.shortcuts import render
 from catalog import models as catalog_models
 from catalog.utils import get_favorite_ids
 
+from .pages import PAGES
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +36,14 @@ def favicon_view(request):
         return FileResponse(open(path, "rb"), content_type="image/x-icon")
     except FileNotFoundError:
         raise Http404("Favicon not found")
+
+
+def info_page_view(request, slug):
+    """Render a static information page from ``core.pages.PAGES``."""
+    page = PAGES.get(slug)
+    if page is None:
+        raise Http404("Page not found")
+    return render(request, "core/info_page.html", {"page": page})
 
 
 # Create your views here.
