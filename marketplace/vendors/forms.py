@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.forms import inlineformset_factory
 
@@ -15,6 +17,12 @@ class CreateProductForm(forms.ModelForm):
             "category",
             "properties",
         )
+
+    def clean_price(self):
+        price = self.cleaned_data["price"]
+        if price is not None and price < Decimal("0"):
+            raise forms.ValidationError("Ціна не може бути від'ємною.")
+        return price
 
 
 ProductImageFormSet = inlineformset_factory(

@@ -220,6 +220,13 @@
     .item-name {
         font-weight: 500;
     }
+    .item-cancelled {
+        display: inline-block; margin-left: 6px; padding: 2px 6px;
+        border-radius: 4px; background: #ffebee; color: #c62828;
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        vertical-align: middle;
+    }
+    .item-cancelled-row td { background: #fffafa; }
     .item-name a {
         color: var(--dark);
         text-decoration: none;
@@ -398,12 +405,15 @@
                         </thead>
                         <tbody>
                             {% for item in order.items.all %}
-                            <tr>
+                            <tr class="{% if item.status == 'cancelled' %}item-cancelled-row{% endif %}">
                                 <td class="item-name">
                                     {% if item.product %}
                                         <a href="{% url 'product_detail' item.product.pk %}">{{ item.name }}</a>
                                     {% else %}
                                         {{ item.name }}
+                                    {% endif %}
+                                    {% if item.status == 'cancelled' %}
+                                        <span class="item-cancelled">Скасовано</span>
                                     {% endif %}
                                 </td>
                                 <td class="item-qty">{{ item.quantity }} шт.</td>

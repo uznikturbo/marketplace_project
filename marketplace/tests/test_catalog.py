@@ -278,6 +278,24 @@ class CartViewTests(BaseTestCase):
 
         self.assertEqual(response.status_code, 405)
 
+    def test_add_ignores_external_referer(self):
+        response = self.client.post(
+            reverse("cart_add", args=[self.product.pk]),
+            {"quantity": 1},
+            HTTP_REFERER="https://evil.example/phishing",
+        )
+
+        self.assertRedirects(response, reverse("catalog"))
+
+    def test_add_returns_to_same_site_referer(self):
+        response = self.client.post(
+            reverse("cart_add", args=[self.product.pk]),
+            {"quantity": 1},
+            HTTP_REFERER="/catalog/?q=test",
+        )
+
+        self.assertRedirects(response, "/catalog/?q=test")
+
     def test_authenticated_user_gets_persistent_cart(self):
         user = make_user()
         self.client.force_login(user)
@@ -373,6 +391,13 @@ class FavoriteTests(BaseTestCase):
         self.assertFalse(
             Favorite.objects.filter(user=user, product=self.product).exists()
         )
+
+    def test_toggle_requires_post(self):
+        response = self.client.get(
+            reverse("toggle_favorite", args=[self.product.pk])
+        )
+
+        self.assertEqual(response.status_code, 405)
 
     def test_anonymous_toggle_uses_session(self):
         url = reverse("toggle_favorite", args=[self.product.pk])

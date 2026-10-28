@@ -148,15 +148,25 @@ class LoginTests(BaseTestCase):
 
 
 class SendSmsTaskTests(BaseTestCase):
-    @override_settings(SMS_API_URL=None, SMS_API_KEY=None)
+    @override_settings(SMS_API_URL=None, SMS_API_KEY=None, DEBUG=True)
     @patch("registration.tasks.requests.post")
-    def test_without_provider_logs_code_and_does_not_send(self, mock_post):
+    def test_without_provider_logs_code_only_in_debug(self, mock_post):
         with self.assertLogs("registration.tasks", level="WARNING") as logs:
             result = send_sms_conf_task("+380501112233", "123456")
 
         self.assertFalse(result)
         mock_post.assert_not_called()
         self.assertIn("123456", "\n".join(logs.output))
+
+    @override_settings(SMS_API_URL=None, SMS_API_KEY=None, DEBUG=False)
+    @patch("registration.tasks.requests.post")
+    def test_without_provider_does_not_log_code_in_production(self, mock_post):
+        with self.assertLogs("registration.tasks", level="ERROR") as logs:
+            result = send_sms_conf_task("+380501112233", "123456")
+
+        self.assertFalse(result)
+        mock_post.assert_not_called()
+        self.assertNotIn("123456", "\n".join(logs.output))
 
     @override_settings(SMS_API_URL="https://sms.example.com/send", SMS_API_KEY="secret")
     @patch("registration.tasks.requests.post")

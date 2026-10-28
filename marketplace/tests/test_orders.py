@@ -6,6 +6,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import requests
+from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -38,6 +39,8 @@ def liqpay_payload(order_id, status="success", private_key="sandbox_private", **
         "order_id": order_id,
         "status": status,
         "transaction_id": "tx-123",
+        "amount": "100.00",
+        "currency": "UAH",
     }
     data.update(extra)
     encoded = base64.b64encode(json.dumps(data).encode("utf-8")).decode("utf-8")
@@ -419,11 +422,58 @@ class LiqPayCallbackTests(BaseTestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
 
-    def test_sandbox_status_marks_order_as_paid(self):
+    @override_settings(LIQPAY_SANDBOX=True)
+    def test_sandbox_status_marks_order_as_paid_when_enabled(self):
         self.client.post(self.url, liqpay_payload(self.order.id, status="sandbox"))
 
         self.order.refresh_from_db()
         self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
+
+    def test_sandbox_status_is_rejected_by_default(self):
+        response = self.client.post(
+            self.url, liqpay_payload(self.order.id, status="sandbox")
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    def test_wrong_amount_is_rejected(self):
+        response = self.client.post(
+            self.url, liqpay_payload(self.order.id, amount="1.00")
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    def test_wrong_currency_is_rejected(self):
+        response = self.client.post(
+            self.url, liqpay_payload(self.order.id, currency="USD")
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    def test_non_liqpay_order_is_rejected(self):
+        order = make_order(payment_method=PaymentMethod.POSTPAID)
+
+        response = self.client.post(self.url, liqpay_payload(order.id))
+
+        self.assertEqual(response.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, PaymentStatus.PENDING)
+
+    def test_cancelled_order_is_not_marked_as_paid(self):
+        self.order.status = OrderStatus.CANCELLED
+        self.order.save(update_fields=["status"])
+
+        response = self.client.post(self.url, liqpay_payload(self.order.id))
+
+        self.assertEqual(response.status_code, 409)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
 
     def test_failure_marks_order_as_failed(self):
         self.client.post(self.url, liqpay_payload(self.order.id, status="failure"))
@@ -448,6 +498,10 @@ class LiqPayCallbackTests(BaseTestCase):
 
 
 class NovaPoshtaTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+
     def test_cities_without_api_key_return_503(self):
         with override_settings(NOVAPOST_API=None):
             response = self.client.get(reverse("np_cities"), {"q": "Kyiv"})
@@ -455,7 +509,7 @@ class NovaPoshtaTests(BaseTestCase):
         self.assertEqual(response.status_code, 503)
 
     @override_settings(NOVAPOST_API="test-key")
-    @patch("orders.views.requests.post")
+    @patch("orders.novaposhta.requests.post")
     def test_cities_are_proxied(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {"success": True, "data": [{"City": "Kyiv"}]}
@@ -469,11 +523,61 @@ class NovaPoshtaTests(BaseTestCase):
         self.assertEqual(mock_post.call_args.kwargs["timeout"], 10)
 
     @override_settings(NOVAPOST_API="test-key")
-    @patch("orders.views.requests.post", side_effect=requests.RequestException("boom"))
+    @patch("orders.novaposhta.requests.post")
+    def test_cities_are_cached(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"success": True, "data": [{"City": "Kyiv"}]}
+        mock_post.return_value = mock_response
+
+        self.client.get(reverse("np_cities"), {"q": "Kyiv"})
+        response = self.client.get(reverse("np_cities"), {"q": "Kyiv"})
+
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_called_once()
+
+    @override_settings(NOVAPOST_API="test-key")
+    @patch("orders.novaposhta.requests.post")
+    def test_short_city_query_does_not_call_api(self, mock_post):
+        response = self.client.get(reverse("np_cities"), {"q": "K"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"], [])
+        mock_post.assert_not_called()
+
+    @override_settings(NOVAPOST_API="test-key")
+    @patch("orders.novaposhta.requests.post", side_effect=requests.RequestException("boom"))
     def test_cities_api_failure_returns_502(self, mock_post):
         response = self.client.get(reverse("np_cities"), {"q": "Kyiv"})
 
         self.assertEqual(response.status_code, 502)
+
+    @override_settings(NOVAPOST_API="test-key")
+    @patch("orders.novaposhta.time.sleep")
+    @patch("orders.novaposhta.requests.post")
+    def test_cities_rate_limit_is_retried_then_returned(self, mock_post, mock_sleep):
+        limited = MagicMock(status_code=429, headers={"Retry-After": "0"})
+        mock_post.return_value = limited
+
+        response = self.client.get(reverse("np_cities"), {"q": "Kyiv"})
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(mock_post.call_count, 2)
+        mock_sleep.assert_called_once()
+
+    @override_settings(NOVAPOST_API="test-key")
+    @patch("orders.novaposhta.time.sleep")
+    @patch("orders.novaposhta.requests.post")
+    def test_cities_rate_limit_can_recover_on_retry(self, mock_post, mock_sleep):
+        limited = MagicMock(status_code=429, headers={"Retry-After": "0"})
+        success = MagicMock()
+        success.json.return_value = {"success": True, "data": [{"City": "Kyiv"}]}
+        mock_post.side_effect = [limited, success]
+
+        response = self.client.get(reverse("np_cities"), {"q": "Kyiv"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 2)
+        mock_sleep.assert_called_once()
 
     def test_warehouses_without_api_key_return_503(self):
         with override_settings(NOVAPOST_API=None):
@@ -489,7 +593,7 @@ class NovaPoshtaTests(BaseTestCase):
         self.assertFalse(response.json()["success"])
 
     @override_settings(NOVAPOST_API="test-key")
-    @patch("orders.views.requests.post")
+    @patch("orders.novaposhta.requests.post")
     def test_warehouses_are_proxied(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {"success": True, "data": [{"Number": "1"}]}
@@ -499,3 +603,16 @@ class NovaPoshtaTests(BaseTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"][0]["Number"], "1")
+
+    @override_settings(NOVAPOST_API="test-key")
+    @patch("orders.novaposhta.requests.post")
+    def test_warehouses_are_cached(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"success": True, "data": [{"Number": "1"}]}
+        mock_post.return_value = mock_response
+
+        self.client.get(reverse("np_warehouses"), {"city_ref": "ref"})
+        response = self.client.get(reverse("np_warehouses"), {"city_ref": "ref"})
+
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_called_once()

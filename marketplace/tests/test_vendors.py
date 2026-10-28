@@ -5,7 +5,13 @@ from django.urls import reverse
 from django.utils import timezone
 
 from catalog.models import Product, ProductDiscount
-from orders.models import OrderItem, OrderStatus, PaymentMethod
+from orders.models import (
+    OrderItem,
+    OrderItemStatus,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+)
 
 from .base import (
     BaseTestCase,
@@ -109,6 +115,22 @@ class VendorProductTests(BaseTestCase):
 
         product = Product.objects.get(name="Product with image")
         self.assertEqual(product.images.count(), 1)
+
+    def test_negative_price_is_rejected(self):
+        payload = {
+            "name": "Negative price",
+            "description": "Invalid",
+            "price": "-1.00",
+            "quantity": 1,
+            "category": make_category().pk,
+            "properties": "{}",
+        }
+        payload.update(self._formset_data())
+
+        response = self.client.post(reverse("create_product"), payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.filter(name="Negative price").exists())
 
     def test_invalid_product_is_not_created(self):
         payload = {
@@ -304,6 +326,135 @@ class VendorOrderTests(BaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, OrderStatus.NEW)
+
+
+class VendorOrderItemCancellationTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vendor = make_vendor()
+        self.other_vendor = make_vendor()
+        self.product = make_product(
+            vendor=self.vendor, price=Decimal("50.00"), quantity=8
+        )
+        self.other_product = make_product(
+            vendor=self.other_vendor, price=Decimal("10.00"), quantity=5
+        )
+        self.order = make_order(
+            user=make_user(),
+            payment_method=PaymentMethod.POSTPAID,
+            total_products=Decimal("110.00"),
+            total_amount=Decimal("110.00"),
+        )
+        self.item = OrderItem.objects.create(
+            order=self.order,
+            product=self.product,
+            name=self.product.name,
+            price=Decimal("50.00"),
+            quantity=2,
+        )
+        self.other_item = OrderItem.objects.create(
+            order=self.order,
+            product=self.other_product,
+            name=self.other_product.name,
+            price=Decimal("10.00"),
+            quantity=1,
+        )
+        self.client.force_login(self.vendor)
+
+    def _cancel_url(self, order=None, item=None):
+        return reverse(
+            "vendor_cancel_order_item",
+            args=[(order or self.order).pk, (item or self.item).pk],
+        )
+
+    def test_vendor_cancels_only_selected_item(self):
+        response = self.client.post(self._cancel_url(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.other_item.refresh_from_db()
+        self.order.refresh_from_db()
+        self.product.refresh_from_db()
+
+        self.assertEqual(self.item.status, OrderItemStatus.CANCELLED)
+        self.assertEqual(self.other_item.status, OrderItemStatus.ACTIVE)
+        self.assertEqual(self.order.status, OrderStatus.NEW)
+        self.assertEqual(self.product.quantity, 10)
+        self.assertEqual(self.order.total_products, Decimal("10.00"))
+        self.assertEqual(self.order.postpaid_fee, Decimal("20.20"))
+        self.assertEqual(self.order.total_amount, Decimal("30.20"))
+        self.assertContains(response, "Скасовано")
+
+    def test_cancelling_last_item_cancels_whole_order(self):
+        order = make_order(
+            user=make_user(),
+            payment_method=PaymentMethod.POSTPAID,
+            total_products=Decimal("100.00"),
+            total_amount=Decimal("100.00"),
+        )
+        item = OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            name=self.product.name,
+            price=Decimal("50.00"),
+            quantity=2,
+        )
+
+        response = self.client.post(self._cancel_url(order, item), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        item.refresh_from_db()
+        self.assertEqual(item.status, OrderItemStatus.CANCELLED)
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual(order.total_products, Decimal("0.00"))
+        self.assertEqual(order.total_amount, Decimal("0.00"))
+
+    def test_vendor_cannot_cancel_foreign_item(self):
+        response = self.client.post(
+            self._cancel_url(self.order, self.other_item)
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.other_item.refresh_from_db()
+        self.assertEqual(self.other_item.status, OrderItemStatus.ACTIVE)
+
+    def test_vendor_cannot_cancel_item_in_shipped_order(self):
+        self.order.status = OrderStatus.SHIPPED
+        self.order.save(update_fields=["status"])
+
+        response = self.client.post(self._cancel_url(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Не можна скасувати товар")
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, OrderItemStatus.ACTIVE)
+
+    def test_vendor_cannot_cancel_item_twice(self):
+        self.client.post(self._cancel_url())
+        response = self.client.post(self._cancel_url(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "уже скасовано")
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 10)
+
+    def test_cancel_endpoint_requires_post(self):
+        response = self.client.get(self._cancel_url())
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_cannot_cancel_pending_liqpay_item(self):
+        self.order.payment_method = PaymentMethod.LIQPAY
+        self.order.payment_status = PaymentStatus.PENDING
+        self.order.save(update_fields=["payment_method", "payment_status"])
+
+        response = self.client.post(self._cancel_url(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "до завершення оплати")
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, OrderItemStatus.ACTIVE)
 
 
 class VendorPaginationTests(BaseTestCase):

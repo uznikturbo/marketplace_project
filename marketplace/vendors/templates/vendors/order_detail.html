@@ -65,6 +65,26 @@
     .btn-back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--gray-2); text-decoration: none; transition: color 0.2s; white-space: nowrap; }
     .btn-back:hover { color: var(--dark); }
 
+    .item-status {
+        display: inline-block; padding: 4px 8px; border-radius: 6px;
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+    }
+    .item-status-active { background: var(--green-light); color: var(--green-dark); }
+    .item-status-cancelled { background: #ffebee; color: #c62828; }
+    .btn-cancel-item {
+        border: 1px solid #ef9a9a; background: #fff5f5; color: #c62828;
+        padding: 6px 10px; border-radius: 7px; font: inherit; font-size: 12px;
+        font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .btn-cancel-item:hover { background: #ffebee; }
+    .cancel-note {
+        margin: 0 0 16px; padding: 12px 14px; border-radius: 10px;
+        background: #fff8e1; border: 1px solid #ffe082; color: #795548;
+        font-size: 13px; line-height: 1.45;
+    }
+    .cancelled-row td { background: #fffafa; }
+    .cancelled-row .item-name { text-decoration: line-through; color: var(--gray-2); }
+
     /* ── АДАПТИВНІСТЬ ПРОДАВЦЯ (ТЕЛЕФОНИ) ── */
     @media (max-width: 600px) {
         .vendor-wrapper { margin-top: 10px; gap: 16px; }
@@ -121,6 +141,7 @@
             </div>
             
             <!-- Форма зміни статусу -->
+            {% if order.status != 'cancelled' %}
             <form method="POST" class="status-form">
                 {% csrf_token %}
                 <span style="font-size: 13px; font-weight: 700; color: var(--gray-2); text-transform: uppercase;">Статус:</span>
@@ -131,6 +152,9 @@
                 </select>
                 <button type="submit" class="btn-update">Зберегти</button>
             </form>
+            {% else %}
+                <span class="item-status item-status-cancelled">Замовлення скасовано</span>
+            {% endif %}
         </div>
 
         <!-- Інформація (Клієнт + Доставка) -->
@@ -198,6 +222,9 @@
 
         <!-- Товари -->
         <h3 style="font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 16px;">Товари у замовленні</h3>
+        {% if order.payment_status == 'paid' %}
+            <p class="cancel-note">Замовлення вже оплачене. Після скасування позиції повернення коштів потрібно обробити окремо.</p>
+        {% endif %}
         <div style="overflow-x: auto;">
             <table class="items-table">
                 <thead>
@@ -205,12 +232,14 @@
                         <th>Товар</th>
                         <th>Ціна</th>
                         <th>К-сть</th>
+                        <th>Статус</th>
                         <th style="text-align: right;">Сума</th>
+                        <th style="text-align: right;">Дія</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in vendor_items %}
-                    <tr>
+                    <tr class="{% if item.status == 'cancelled' %}cancelled-row{% endif %}">
                         <td>
                             <div class="item-product">
                                 <div class="item-img">
@@ -227,7 +256,26 @@
                         </td>
                         <td style="font-weight: 600;">{{ item.price|floatformat:0 }} ₴</td>
                         <td>{{ item.quantity }} шт.</td>
+                        <td>
+                            {% if item.status == 'cancelled' %}
+                                <span class="item-status item-status-cancelled">Скасовано</span>
+                            {% else %}
+                                <span class="item-status item-status-active">Активний</span>
+                            {% endif %}
+                        </td>
                         <td style="text-align: right; font-weight: 700; color: var(--dark);">{{ item.total|floatformat:0 }} ₴</td>
+                        <td style="text-align: right;">
+                            {% if item.status == 'active' %}
+                                {% if order.payment_method == 'liqpay' and order.payment_status == 'pending' %}
+                                    <span class="cancel-note" style="display: inline-block; margin: 0; padding: 6px 8px;">Очікується оплата</span>
+                                {% elif order.status == 'new' or order.status == 'processing' %}
+                                    <form method="post" action="{% url 'vendor_cancel_order_item' order.pk item.pk %}" onsubmit="return confirm('Скасувати тільки цей товар?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-cancel-item">Скасувати товар</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

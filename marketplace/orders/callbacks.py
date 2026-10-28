@@ -3,12 +3,13 @@ import binascii
 import hashlib
 import hmac
 import json
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Order, OrderStatus, PaymentStatus
+from .models import Order, OrderStatus, PaymentMethod, PaymentStatus
 
 
 @csrf_exempt
@@ -52,7 +53,31 @@ def liqpay_callback(request):
     except (Order.DoesNotExist, ValueError):
         return HttpResponse("Order not found", status=404)
 
-    if status in ("success", "wait_accept", "sandbox"):
+    if order.payment_method != PaymentMethod.LIQPAY:
+        return HttpResponse("Order is not a LiqPay order", status=400)
+
+    paid_statuses = {"success", "wait_accept"}
+    if settings.LIQPAY_SANDBOX:
+        paid_statuses.add("sandbox")
+    elif status == "sandbox":
+        # A sandbox callback must not mark a real order as paid.
+        return HttpResponse("Sandbox payments are disabled", status=400)
+
+    if status in paid_statuses:
+        if order.status == OrderStatus.CANCELLED:
+            return HttpResponse("Order is cancelled", status=409)
+
+        if decoded_data.get("currency") != "UAH":
+            return HttpResponse("Invalid currency", status=400)
+
+        try:
+            paid_amount = Decimal(str(decoded_data.get("amount")))
+        except (InvalidOperation, TypeError, ValueError):
+            return HttpResponse("Invalid amount", status=400)
+
+        if paid_amount != order.total_amount:
+            return HttpResponse("Invalid amount", status=400)
+
         order.payment_status = PaymentStatus.PAID
         order.payment_id = decoded_data.get("transaction_id")
         order.status = OrderStatus.PROCESSING

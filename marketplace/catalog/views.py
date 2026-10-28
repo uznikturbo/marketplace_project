@@ -14,6 +14,7 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from core.pagination import paginate
@@ -37,6 +38,18 @@ CATALOG_PRESETS = {
     "new": {"title": "Новинки", "default_sort": "newest"},
     "top": {"title": "Топ продажів", "default_sort": "top"},
 }
+
+
+def _safe_referer_redirect(request):
+    """Redirect back to the referer only when it points to this site."""
+    referer = request.META.get("HTTP_REFERER")
+    if referer and url_has_allowed_host_and_scheme(
+        referer,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(referer)
+    return redirect("catalog")
 
 
 # Create your views here.
@@ -203,7 +216,7 @@ def cart_add(request, pk):
 
     if not product.is_available or product.quantity <= 0:
         messages.error(request, f"Товар '{product.name}' немає в наявності.")
-        return redirect(request.META.get("HTTP_REFERER", "/"))
+        return _safe_referer_redirect(request)
 
     try:
         quantity = int(request.POST.get("quantity", 1))
@@ -229,7 +242,7 @@ def cart_add(request, pk):
     cart_item.quantity = new_quantity
     cart_item.save()
     messages.success(request, f"Товар '{product.name}' додано до кошика.")
-    return redirect(request.META.get("HTTP_REFERER", "/"))
+    return _safe_referer_redirect(request)
 
 
 @require_POST
@@ -238,7 +251,7 @@ def cart_remove(request, pk):
 
     CartItem.objects.filter(cart=cart, product_id=pk).delete()
     messages.success(request, "Товар видалено з кошика.")
-    return redirect(request.META.get("HTTP_REFERER", "/"))
+    return _safe_referer_redirect(request)
 
 
 def cart_detail_view(request):
@@ -265,9 +278,10 @@ def cart_update(request, pk):
     cart_item.save()
 
     messages.success(request, f"Кількість товару '{product.name}' оновлено.")
-    return redirect(request.META.get("HTTP_REFERER", "/"))
+    return _safe_referer_redirect(request)
 
 
+@require_POST
 def toggle_favorite(request, pk):
     product = get_object_or_404(models.Product, pk=pk)
 

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -27,6 +29,11 @@ class OrderStatus(models.TextChoices):
     SHIPPED = "shipped", "Відправлено"
     COMPLETED = "completed", "Виконано"
     CANCELLED = "cancelled", "Скасовано"
+
+
+class OrderItemStatus(models.TextChoices):
+    ACTIVE = "active", "Активний"
+    CANCELLED = "cancelled", "Скасований"
 
 
 class Order(models.Model):
@@ -83,6 +90,25 @@ class Order(models.Model):
     def __str__(self):
         return f"Замовлення #{self.id} - {self.get_status_display()}"
 
+    def recalculate_totals(self):
+        """Recalculate totals from the items that are still active."""
+        active_items = self.items.exclude(status=OrderItemStatus.CANCELLED)
+        total_products = sum(
+            (item.total for item in active_items), Decimal("0.00")
+        )
+
+        self.total_products = total_products
+        if (
+            self.payment_method == PaymentMethod.POSTPAID
+            and total_products > Decimal("0.00")
+        ):
+            self.postpaid_fee = round(
+                Decimal("20.00") + total_products * Decimal("0.02"), 2
+            )
+        else:
+            self.postpaid_fee = Decimal("0.00")
+        self.total_amount = self.total_products + self.postpaid_fee
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
@@ -90,7 +116,16 @@ class OrderItem(models.Model):
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
+    status = models.CharField(
+        max_length=20,
+        choices=OrderItemStatus.choices,
+        default=OrderItemStatus.ACTIVE,
+    )
 
     @property
     def total(self):
         return self.price * self.quantity
+
+    @property
+    def is_cancelled(self):
+        return self.status == OrderItemStatus.CANCELLED

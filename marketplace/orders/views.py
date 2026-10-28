@@ -5,7 +5,6 @@ import logging
 import time
 from decimal import Decimal
 
-import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -13,12 +12,19 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_GET
 
 from catalog.models import Product
 from catalog.utils import get_cart
 
 from .forms import OrderCreateForm
 from .models import Order, OrderItem, PaymentMethod, PaymentStatus
+from .novaposhta import (
+    NovaPoshtaError,
+    NovaPoshtaRateLimited,
+    get_cities,
+    get_warehouses,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +60,10 @@ def checkout(request):
                         order.user = request.user
 
                     cart_total = cart.get_total_price()
+                    if cart_total <= 0:
+                        raise ValueError(
+                            "Сума замовлення має бути більшою за нуль."
+                        )
                     order.total_products = cart_total
 
                     if order.payment_method == PaymentMethod.POSTPAID:
@@ -244,6 +254,7 @@ def order_success(request, order_id):
     )
 
 
+@require_GET
 def np_get_cities(request):
     if not settings.NOVAPOST_API:
         return JsonResponse(
@@ -251,27 +262,21 @@ def np_get_cities(request):
             status=503,
         )
 
-    search_query = request.GET.get("q", "")
-    payload = {
-        "apiKey": settings.NOVAPOST_API,
-        "modelName": "Address",
-        "calledMethod": "getCities",
-        "methodProperties": {"FindByString": search_query, "Limit": "50"},
-    }
-
     try:
-        response = requests.post(
-            "https://api.novaposhta.ua/v2.0/json/", json=payload, timeout=10
-        )
-        response.raise_for_status()
-        return JsonResponse(response.json())
-    except (requests.RequestException, ValueError):
+        data = get_cities(request.GET.get("q", ""))
+    except NovaPoshtaRateLimited:
         return JsonResponse(
-            {"success": False, "error": "Nova Poshta API is unavailable"},
-            status=502,
+            {"success": False, "error": "Nova Poshta API rate limit exceeded"}, status=429
+        )
+    except NovaPoshtaError:
+        return JsonResponse(
+            {"success": False, "error": "Nova Poshta API is unavailable"}, status=502
         )
 
+    return JsonResponse(data)
 
+
+@require_GET
 def np_get_warehouses(request):
     if not settings.NOVAPOST_API:
         return JsonResponse(
@@ -279,29 +284,22 @@ def np_get_warehouses(request):
             status=503,
         )
 
-    city_ref = request.GET.get("city_ref")
-
+    city_ref = request.GET.get("city_ref", "").strip()
     if not city_ref:
         return JsonResponse({"success": False, "error": "city_ref is required"})
 
-    payload = {
-        "apiKey": settings.NOVAPOST_API,
-        "modelName": "Address",
-        "calledMethod": "getWarehouses",
-        "methodProperties": {"CityRef": city_ref},
-    }
-
     try:
-        response = requests.post(
-            "https://api.novaposhta.ua/v2.0/json/", json=payload, timeout=10
-        )
-        response.raise_for_status()
-        return JsonResponse(response.json())
-    except (requests.RequestException, ValueError):
+        data = get_warehouses(city_ref)
+    except NovaPoshtaRateLimited:
         return JsonResponse(
-            {"success": False, "error": "Nova Poshta API is unavailable"},
-            status=502,
+            {"success": False, "error": "Nova Poshta API rate limit exceeded"}, status=429
         )
+    except NovaPoshtaError:
+        return JsonResponse(
+            {"success": False, "error": "Nova Poshta API is unavailable"}, status=502
+        )
+
+    return JsonResponse(data)
 
 
 @login_required

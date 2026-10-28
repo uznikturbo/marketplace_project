@@ -21,3 +21,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 SECURE_SSL_REDIRECT = False
+
+# Keep the regular test suite independent from lockout state; dedicated
+# axes tests enable it explicitly.
+AXES_ENABLED = False

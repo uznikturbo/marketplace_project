@@ -68,17 +68,31 @@
         function addRow(key = '', value = '') {
             const row = document.createElement('div');
             row.className = 'property-row';
-            row.innerHTML = `
-                <input type="text" class="prop-key" placeholder="Назва (напр. Колір)" value="${key}">
-                <input type="text" class="prop-value" placeholder="Значення (напр. Чорний)" value="${value}">
-                <button type="button" class="btn-remove-prop" title="Видалити">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            `;
-            // Обробник видалення
-            row.querySelector('.btn-remove-prop').addEventListener('click', function() {
+
+            // Не вставляємо key/value через innerHTML: значення з БД можуть
+            // містити HTML і виконатися як DOM XSS.
+            const keyInput = document.createElement('input');
+            keyInput.type = 'text';
+            keyInput.className = 'prop-key';
+            keyInput.placeholder = 'Назва (напр. Колір)';
+            keyInput.value = key;
+
+            const valueInput = document.createElement('input');
+            valueInput.type = 'text';
+            valueInput.className = 'prop-value';
+            valueInput.placeholder = 'Значення (напр. Чорний)';
+            valueInput.value = value;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-remove-prop';
+            removeBtn.title = 'Видалити';
+            removeBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+            removeBtn.addEventListener('click', function() {
                 row.remove();
             });
+
+            row.append(keyInput, valueInput, removeBtn);
             container.appendChild(row);
         }
 

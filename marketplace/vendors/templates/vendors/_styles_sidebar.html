@@ -1,27 +1,117 @@
-/* Спільні стилі: add_discount.html, create_product.html, edit_product.html, order_detail.html, orders.html, vendor.html */
-.vendor-sidebar-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--gray-2);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 0 20px 12px;
+/* Спільні стилі меню продавця. */
+.vendor-sidebar {
+    position: sticky;
+    top: 20px;
+    overflow: hidden;
+}
+
+.vendor-sidebar-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
     border-bottom: 1px solid var(--gray-4);
-    margin-bottom: 8px;
+}
+
+.vendor-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.vendor-sidebar-identity {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vendor-sidebar-identity strong {
+    color: var(--dark);
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vendor-sidebar-identity span {
+    color: var(--gray-2);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.vendor-menu {
+    padding: 8px 0 12px;
+}
+
+.vendor-nav-label {
+    padding: 14px 20px 6px;
+    color: var(--gray-3);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
 }
 
 .vendor-nav {
     list-style: none;
 }
 
-.vendor-nav li a:hover, .vendor-nav li a.active {
+.vendor-nav li a {
+    border-radius: 0 8px 8px 0;
+    margin-right: 12px;
+}
+
+.vendor-nav li a:hover,
+.vendor-nav li a.active {
     background: var(--green-light);
     color: var(--green);
     border-left-color: var(--green);
 }
 
+.vendor-nav li a.active {
+    font-weight: 800;
+}
+
 .vendor-nav svg {
     width: 20px;
     height: 20px;
+    flex-shrink: 0;
     color: currentColor;
+}
+
+@media (max-width: 860px) {
+    .vendor-sidebar {
+        position: static;
+    }
+
+    .vendor-menu {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 4px;
+    }
+
+    .vendor-nav-label {
+        grid-column: 1 / -1;
+    }
+
+    .vendor-nav {
+        display: contents;
+    }
+
+    .vendor-nav li a {
+        margin-right: 0;
+        border-radius: 8px;
+        margin: 2px 8px;
+    }
 }

@@ -478,6 +478,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ─── 1. Пошук міста (Нова Пошта) ──────────────────────────────────────────
     let citySelected = !!cityRefInput.value;  // true якщо вже є значення
     let debounceTimer;
+    let cityRequestController;
 
     cityInput.addEventListener('input', function () {
         citySelected = false;
@@ -491,41 +492,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         debounceTimer = setTimeout(() => {
-            fetch(`/orders/api/np/cities/?q=${encodeURIComponent(query)}`) // Переконайся, що шлях збігається з твоїм urls.py!
-                .then(res => res.json())
+            // Скасовуємо попередній запит, щоб швидкий набір не створював
+            // чергу запитів до Nova Poshta.
+            if (cityRequestController) cityRequestController.abort();
+            cityRequestController = new AbortController();
+
+            fetch(`/orders/api/np/cities/?q=${encodeURIComponent(query)}`, {
+                signal: cityRequestController.signal
+            })
+                .then(res => {
+                    if (res.status === 429) throw new Error('rate-limit');
+                    if (!res.ok) throw new Error('request-failed');
+                    return res.json();
+                })
                 .then(data => {
                     cityResults.innerHTML = '';
-                    
-                    // ЗМІНЕНО: Беремо дані прямо з data.data
-                    const cities = data.data || []; 
-                    
+                    const cities = data.data || [];
+
                     if (data.success && cities.length > 0) {
                         cities.forEach(item => {
                             const div = document.createElement('div');
-                            
-                            // Формуємо гарну назву (напр. "місто Черкаси")
                             const type = item.SettlementTypeDescription || '';
                             div.textContent = `${type} ${item.Description}`.trim();
-                            
+
                             div.addEventListener('mousedown', (e) => {
-                                // mousedown замість click — щоб спрацювало раніше blur
                                 e.preventDefault();
-                                // Передаємо Description та Ref
-                                selectCity(item.Description, item.Ref); 
+                                selectCity(item.Description, item.Ref);
                             });
                             cityResults.appendChild(div);
                         });
                         cityResults.style.display = 'block';
                     } else {
                         const empty = document.createElement('div');
-                        empty.textContent = 'Місто не знайдено';
+                        empty.textContent = data.success
+                            ? 'Місто не знайдено'
+                            : 'Сервіс Нової Пошти тимчасово недоступний';
                         empty.className = 'np-empty';
                         cityResults.appendChild(empty);
                         cityResults.style.display = 'block';
                     }
                 })
-                .catch(() => { cityResults.style.display = 'none'; });
-        }, 300);
+                .catch((error) => {
+                    if (error.name === 'AbortError') return;
+                    cityResults.innerHTML = '';
+                    const message = document.createElement('div');
+                    message.textContent = error.message === 'rate-limit'
+                        ? 'Забагато запитів. Спробуйте через хвилину.'
+                        : 'Не вдалося завантажити міста';
+                    message.className = 'np-empty';
+                    cityResults.appendChild(message);
+                    cityResults.style.display = 'block';
+                });
+        }, 450);
     });
 
     cityInput.addEventListener('blur', () => {
@@ -612,50 +630,72 @@ document.addEventListener('DOMContentLoaded', function () {
     if (initialMethod) showDeliveryDetail(initialMethod);
 
     // ─── 3. Завантаження відділень / поштоматів ────────────────────────────────
+    const warehouseCache = new Map();
+    let warehouseRequestController;
+
+    function renderWarehouses(data, method) {
+        warehouseSelect.disabled = false;
+        warehouseSelect.innerHTML = '<option value="">Оберіть відділення...</option>';
+
+        if (data.success && data.data.length > 0) {
+            data.data
+                .filter(wh => {
+                    if (method === 'np_postomat') {
+                        return wh.Description.toLowerCase().includes('поштомат') ||
+                               wh.CategoryOfWarehouse === 'Postomat';
+                    }
+                    return !wh.Description.toLowerCase().includes('поштомат') &&
+                           wh.CategoryOfWarehouse !== 'Postomat';
+                })
+                .forEach(wh => {
+                    const opt = document.createElement('option');
+                    opt.value = wh.Ref;
+                    opt.textContent = wh.Description;
+                    opt.dataset.address = wh.Description;
+                    warehouseSelect.appendChild(opt);
+                });
+
+            if (warehouseSelect.options.length === 1) {
+                warehouseSelect.innerHTML = '<option value="">Немає доступних відділень</option>';
+            }
+        } else {
+            warehouseSelect.innerHTML = '<option value="">Немає відділень у цьому місті</option>';
+        }
+    }
+
     function loadWarehouses(cityRef, method) {
+        const cacheKey = `${cityRef}:${method}`;
+        if (warehouseCache.has(cacheKey)) {
+            renderWarehouses(warehouseCache.get(cacheKey), method);
+            return;
+        }
+
         warehouseSelect.innerHTML = '<option value="">Завантаження...</option>';
         warehouseSelect.disabled = true;
 
-        // Фільтруємо: поштомат = TypeOfWarehouse == postomat (НП поверне через Description)
-        let url = `/orders/api/np/warehouses/?city_ref=${cityRef}`;
+        if (warehouseRequestController) warehouseRequestController.abort();
+        warehouseRequestController = new AbortController();
 
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                warehouseSelect.disabled = false;
-                warehouseSelect.innerHTML = '<option value="">Оберіть відділення...</option>';
+        const url = `/orders/api/np/warehouses/?city_ref=${encodeURIComponent(cityRef)}`;
 
-                if (data.success && data.data.length > 0) {
-                    data.data
-                        .filter(wh => {
-                            if (method === 'np_postomat') {
-                                // Поштомати — у НП назва містить "Поштомат"
-                                return wh.Description.toLowerCase().includes('поштомат') ||
-                                       wh.CategoryOfWarehouse === 'Postomat';
-                            } else {
-                                // Звичайні відділення
-                                return !wh.Description.toLowerCase().includes('поштомат') &&
-                                       wh.CategoryOfWarehouse !== 'Postomat';
-                            }
-                        })
-                        .forEach(wh => {
-                            const opt = document.createElement('option');
-                            opt.value = wh.Ref;
-                            opt.textContent = wh.Description;
-                            opt.dataset.address = wh.Description;
-                            warehouseSelect.appendChild(opt);
-                        });
-
-                    if (warehouseSelect.options.length === 1) {
-                        warehouseSelect.innerHTML = '<option value="">Немає доступних відділень</option>';
-                    }
-                } else {
-                    warehouseSelect.innerHTML = '<option value="">Немає відділень у цьому місті</option>';
-                }
+        fetch(url, { signal: warehouseRequestController.signal })
+            .then(res => {
+                if (res.status === 429) throw new Error('rate-limit');
+                if (!res.ok) throw new Error('request-failed');
+                return res.json();
             })
-            .catch(() => {
+            .then(data => {
+                if (data.success) warehouseCache.set(cacheKey, data);
+                renderWarehouses(data, method);
+            })
+            .catch((error) => {
+                if (error.name === 'AbortError') return;
                 warehouseSelect.disabled = false;
-                warehouseSelect.innerHTML = '<option value="">Помилка завантаження</option>';
+                warehouseSelect.innerHTML = '<option value="">' +
+                    (error.message === 'rate-limit'
+                        ? 'Забагато запитів. Спробуйте пізніше'
+                        : 'Помилка завантаження') +
+                    '</option>';
             });
     }
 

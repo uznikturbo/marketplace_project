@@ -339,7 +339,7 @@ class ProfileUITests(UITestCase):
         expect(self.page).to_have_url(re.compile(r"/vendors/orders/$"))
         expect(self.page.locator(".vendor-nav a.active")).to_contain_text("Замовлення")
 
-        self.page.locator(".vendor-nav a", has_text="Повернутись у профіль").click()
+        self.page.locator(".vendor-nav a", has_text="Профіль").click()
         expect(self.page).to_have_url(re.compile(r"/users/profile/$"))
         expect(self.page.locator(".profile-nav a.active")).to_contain_text(
             "Особисті дані"

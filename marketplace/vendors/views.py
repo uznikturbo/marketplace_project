@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.db.models import F, Q, Sum
@@ -8,7 +9,14 @@ from django.views.decorators.http import require_POST
 
 from catalog.models import Product
 from core.pagination import paginate
-from orders.models import Order, OrderStatus, PaymentStatus
+from orders.models import (
+    Order,
+    OrderItem,
+    OrderItemStatus,
+    OrderStatus,
+    PaymentStatus,
+)
+from orders.services import OrderItemCancellationError, cancel_order_item
 
 from .decorators import vendor_required
 from .forms import CreateProductDiscountForm, CreateProductForm, ProductImageFormSet
@@ -125,7 +133,10 @@ def vendor_orders_view(request):
     orders = base_orders.annotate(
         vendor_total=Sum(
             F("items__price") * F("items__quantity"),
-            filter=Q(items__product__user=vendor),
+            filter=Q(
+                items__product__user=vendor,
+                items__status=OrderItemStatus.ACTIVE,
+            ),
         )
     )
 
@@ -151,7 +162,10 @@ def vendor_orders_view(request):
         stats_orders.filter(payment_status=PaymentStatus.PAID).aggregate(
             total=Sum(
                 F("items__price") * F("items__quantity"),
-                filter=Q(items__product__user=vendor),
+                filter=Q(
+                    items__product__user=vendor,
+                    items__status=OrderItemStatus.ACTIVE,
+                ),
             )
         )["total"]
         or 0
@@ -186,13 +200,27 @@ def vendor_order_detail(request, pk):
 
     vendor_items = order.items.filter(product__user=vendor).select_related("product")
 
-    vendor_total = sum(item.total for item in vendor_items)
+    vendor_total = sum(
+        (
+            item.total
+            for item in vendor_items
+            if item.status == OrderItemStatus.ACTIVE
+        ),
+        Decimal("0.00"),
+    )
 
     if request.method == "POST":
         new_status = request.POST.get("status")
-        if new_status in dict(OrderStatus.choices):
+        allowed_statuses = {
+            value
+            for value, _label in OrderStatus.choices
+            if value != OrderStatus.CANCELLED
+        }
+        if order.status == OrderStatus.CANCELLED:
+            messages.error(request, "Скасоване замовлення не можна змінювати.")
+        elif new_status in allowed_statuses:
             order.status = new_status
-            order.save()
+            order.save(update_fields=["status", "updated_at"])
             messages.success(
                 request, f"Статус замовлення #{order.id} успішно оновлено!"
             )
@@ -204,6 +232,33 @@ def vendor_order_detail(request, pk):
         "order": order,
         "vendor_items": vendor_items,
         "vendor_total": vendor_total,
-        "order_statuses": OrderStatus.choices,
+        "order_statuses": [
+            (value, label)
+            for value, label in OrderStatus.choices
+            if value != OrderStatus.CANCELLED
+        ],
     }
     return render(request, "vendors/order_detail.html", context)
+
+
+@vendor_required
+@require_POST
+def vendor_cancel_order_item(request, pk, item_id):
+    order = get_object_or_404(
+        Order.objects.filter(items__product__user=request.user).distinct(), pk=pk
+    )
+    item = get_object_or_404(
+        OrderItem,
+        pk=item_id,
+        order=order,
+        product__user=request.user,
+    )
+
+    try:
+        cancel_order_item(item)
+    except OrderItemCancellationError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, f"Товар '{item.name}' скасовано.")
+
+    return redirect("vendor_order_details", pk=order.pk)

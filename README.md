@@ -65,7 +65,8 @@ build step.
 ### Delivery
 
 - Nova Poshta city and warehouse lookup proxied through the backend, with
-  request timeouts and error handling.
+  request timeouts, short-lived caching, a retry for HTTP 429 and a
+  debounced/abortable lookup in the checkout UI.
 - Branch, parcel locker and courier delivery options.
 
 ### Accounts
@@ -84,6 +85,9 @@ build step.
   products.
 - Discount management with validation of percentage and date range.
 - Vendor order list with revenue statistics and status updates.
+- Vendors can cancel an individual order item without cancelling the whole
+  order; stock and order totals are recalculated automatically. The order is
+  marked cancelled only when its last item is cancelled.
 
 ### Operations
 
@@ -106,6 +110,7 @@ build step.
 | Background jobs  | Celery + Redis                              |
 | Static files     | WhiteNoise                                  |
 | Admin theme      | django-jazzmin                              |
+| Login protection | django-axes                                 |
 | Phone numbers    | django-phonenumber-field                    |
 | Payments         | LiqPay                                      |
 | Delivery         | Nova Poshta API                             |
@@ -142,7 +147,7 @@ rozetka2.0/
     │                         # secret key rotation task and command
     ├── templates/            # shared templates
     ├── static/               # source static assets
-    └── tests/                # test suite (203 tests)
+    └── tests/                # test suite (233 unit/integration tests)
 ```
 
 Each app owns its models, views, URLs and templates. Shared helpers live in
@@ -156,7 +161,7 @@ markup and CSS are defined once:
 
 | Partial | Used by | Purpose |
 | --- | --- | --- |
-| `vendors/_sidebar.html` | all vendor pages | Seller Hub navigation (`active`, `show_orders`, `show_back`) |
+| `vendors/_sidebar.html` | all vendor pages | Seller Hub navigation (`active`) |
 | `vendors/_product_form_fields.html` | create/edit product | image formset + dynamic characteristics |
 | `vendors/_product_form_js.html` | create/edit product | formset and JSON `properties` logic (`edit_mode`) |
 | `users/_profile_sidebar.html` | profile, orders, wishlist | user card + navigation (`active`) |
@@ -277,8 +282,8 @@ celery -A marketplace beat -l info
 ```
 
 If `SMS_API_URL` is empty, the task writes the confirmation code to the
-worker log instead of sending an SMS, which is convenient for local
-development.
+worker log only when `DEBUG=True`. In production it logs an error without
+the code, so one-time passwords never leak into production logs.
 
 ---
 
@@ -304,7 +309,8 @@ See `.env.example` for a ready-to-copy template.
 | `NOVAPOST_API`                | no       | empty                                | Nova Poshta API key. Lookup endpoints return 503 if unset.|
 | `LIQPAY_PUBLIC_KEY`           | no       | empty                                | LiqPay public key. Online payment is disabled if unset.  |
 | `LIQPAY_PRIVATE_KEY`          | no       | empty                                | LiqPay private key, used for signatures.                 |
-| `SMS_API_URL`                 | no       | empty                                | SMS provider endpoint. Codes are logged when unset.      |
+| `LIQPAY_SANDBOX`              | no       | `0`                                  | Accept LiqPay sandbox callbacks as paid. Keep `0` in production. |
+| `SMS_API_URL`                 | no       | empty                                | SMS provider endpoint. Codes are logged only in DEBUG.   |
 | `SMS_API_KEY`                 | no       | empty                                | SMS provider API key.                                    |
 | `DJANGO_SECRET_KEY_FILE`      | no       | `marketplace/.secret_key`            | File used by the rotation task. Overrides `DJANGO_SECRET_KEY` when present. |
 | `SECRET_KEY_ROTATION_DAYS`    | no       | `7`                                  | Rotate the secret key every N days. `0` disables rotation. |
@@ -321,7 +327,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **225 tests**: 209 unit/integration tests and 16 browser
+The suite contains **249 tests**: 233 unit/integration tests and 16 browser
 end-to-end tests. It does not require Redis: `marketplace.settings.test`
 switches to an in-memory cache and a fast password hasher. Browser tests need
 Playwright (see below); without it they are skipped.
@@ -351,10 +357,11 @@ Test modules:
 | -------------------------- | --------------------------------------------------------------------- |
 | `tests/test_models.py`     | Phone/e-mail normalization, uniqueness, ratings, prices, discounts, cart totals |
 | `tests/test_catalog.py`    | Catalog, search, sorting, promotions/new/top pages, reviews, cart rules, favorites |
-| `tests/test_orders.py`     | Checkout, stock rollback, payments, LiqPay callback, Nova Poshta        |
+| `tests/test_orders.py`     | Checkout, stock rollback, payments, LiqPay callback, Nova Poshta cache/429 |
 | `tests/test_users.py`      | Profile, order history, SMS send/verify limits                         |
-| `tests/test_vendors.py`    | Vendor access, product ownership, discounts, vendor orders             |
+| `tests/test_vendors.py`    | Vendor access, product ownership, discounts, vendor orders, item cancellation |
 | `tests/test_registration.py` | Registration, login and `next` safety, SMS task behavior            |
+| `tests/test_axes.py`       | Failed-login lockout by username and client IP                         |
 | `tests/test_core.py`       | Home page, info pages, header/footer links, health check, favicon, timezone |
 | `tests/test_secret_rotation.py` | Secret key file creation, permissions, task and management command |
 | `tests/test_ui.py`         | Playwright/Firefox: home, catalog, cart, login, profile, vendor form   |
@@ -427,6 +434,19 @@ the user cart and delete the guest one.
 5. LiqPay orders are redirected to a signed payment page; cash-on-delivery
    orders go straight to the success page.
 
+### Vendor item cancellation
+
+`POST /vendors/orders/<order_id>/items/<item_id>/cancel/` cancels one item:
+
+- the vendor can cancel only an item whose product belongs to them;
+- shipped, completed and already cancelled orders are protected;
+- the item status becomes `cancelled`, and its quantity is returned to stock;
+- the order total is recalculated from the remaining active items;
+- the order itself becomes `cancelled` only when no active items remain.
+
+If the order was already paid, the UI warns that the refund must be handled
+separately; there is no automatic LiqPay refund flow yet.
+
 ### LiqPay callback
 
 `POST /orders/liqpay-callback/` receives `data` and `signature`:
@@ -434,9 +454,12 @@ the user cart and delete the guest one.
 - the signature is verified as `base64(sha1(private_key + data + private_key))`
   using a constant-time comparison;
 - the payload is decoded and validated;
-- `success`, `wait_accept` and `sandbox` mark the order as paid and move it
-  to processing;
-- `failure` and `error` mark it as failed, unless it is already paid;
+- `success` and `wait_accept` mark the order as paid and move it to
+  processing; `sandbox` does the same only when `LIQPAY_SANDBOX=1`;
+- the callback must belong to a LiqPay order, match the order total and use
+  the `UAH` currency, otherwise it is rejected;
+- cancelled orders are not marked as paid;
+- `failure` and `error` mark the order as failed, unless it is already paid;
 - unknown orders return `404`, malformed requests return `400`.
 
 ### SMS verification
@@ -499,6 +522,8 @@ different keys and reject each other's sessions.
 - Payment callbacks are signature-checked with `hmac.compare_digest`.
 - Passwords are hashed with Django's default hasher; the test suite uses a
   faster one for speed only.
+- `django-axes` locks a username or client IP for 15 minutes after five
+  failed login attempts. The lockout is reset after a successful login.
 
 Before deploying:
 
@@ -524,6 +549,8 @@ They can be relaxed through environment variables while TLS is being set up.
   scale better.
 - Payment and SMS integrations are tested with mocks; no sandbox end-to-end
   tests are included.
+- Cancelling a paid order item recalculates the order total but does not
+  trigger an automatic refund.
 
 ---
 

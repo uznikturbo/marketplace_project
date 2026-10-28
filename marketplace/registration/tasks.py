@@ -12,11 +12,16 @@ def send_sms_conf_task(self, phone, code):
     api_key = (settings.SMS_API_KEY or "").strip()
 
     # Без налаштованого провайдера не робимо невалідний HTTP-запит.
-    # Код пишемо в лог, щоб функцію можна було перевірити локально.
+    # Код показуємо в лог лише локально: у production це був би витік OTP.
     if not api_url:
-        logger.warning(
-            "SMS_API_URL is not configured. Confirmation code for %s: %s", phone, code
-        )
+        if settings.DEBUG:
+            logger.warning(
+                "SMS_API_URL is not configured. Confirmation code for %s: %s",
+                phone,
+                code,
+            )
+        else:
+            logger.error("SMS_API_URL is not configured; confirmation SMS was not sent.")
         return False
 
     payload = {

@@ -385,6 +385,9 @@
 </head>
 <body>
 
+<!-- CSRF-токен для fetch-запитів (обране, кошик тощо). -->
+<form id="csrf-token-form" style="display:none;" aria-hidden="true">{% csrf_token %}</form>
+
 <!-- HEADER -->
 <header class="header">
     <div class="header-top">
@@ -623,10 +626,16 @@
                 if (!url) return; // захист якщо data-url відсутній
                 const svg = this.querySelector('svg');
                 const label = this.querySelector('.wishlist-label');
+                const csrfToken = document.querySelector(
+                    '#csrf-token-form [name="csrfmiddlewaretoken"]'
+                )?.value;
 
                 fetch(url, {
-                    method: 'GET',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {})
+                    }
                 })
                 .then(r => r.json())
                 .then(data => {

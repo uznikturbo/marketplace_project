@@ -10,4 +10,9 @@ urlpatterns = [
     path("<int:pk>/add_discount/", views.add_discount, name="add_discount"),
     path("orders/", views.vendor_orders_view, name="vendor_orders"),
     path("orders/<int:pk>/", views.vendor_order_detail, name="vendor_order_details"),
+    path(
+        "orders/<int:pk>/items/<int:item_id>/cancel/",
+        views.vendor_cancel_order_item,
+        name="vendor_cancel_order_item",
+    ),
 ]

@@ -101,6 +101,7 @@ USE_X_FORWARDED_HOST = True
 # Application definition
 
 INSTALLED_APPS = [
+    "axes",
     "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -127,6 +128,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.TimezoneMiddleware",
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "marketplace.urls"
@@ -173,6 +175,19 @@ CACHES = {
 }
 
 AUTH_USER_MODEL = "users.CustomUser"
+
+# django-axes: rate-limit failed logins by username and by client IP.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
+AXES_RESET_ON_SUCCESS = True
+AXES_HTTP_RESPONSE_CODE = 429
+AXES_ENABLE_ACCESS_FAILURE_LOG = True
+AXES_VERBOSE = False
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -227,6 +242,8 @@ NOVAPOST_API = os.getenv("NOVAPOST_API")
 # LIQPAY
 LIQPAY_PUBLIC_KEY = os.getenv("LIQPAY_PUBLIC_KEY")
 LIQPAY_PRIVATE_KEY = os.getenv("LIQPAY_PRIVATE_KEY")
+# Sandbox callbacks must never be treated as real payments in production.
+LIQPAY_SANDBOX = env_bool("LIQPAY_SANDBOX", False)
 
 # SMS
 SMS_API_URL = os.getenv("SMS_API_URL")
