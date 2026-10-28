@@ -145,6 +145,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "catalog.context_processors.cart",
                 "catalog.context_processors.user_favorites",
+                "catalog.context_processors.nav_categories",
             ],
         },
     },

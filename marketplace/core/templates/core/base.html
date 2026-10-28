@@ -231,6 +231,95 @@
         .nav a:hover { background: rgba(0,0,0,0.15); }
         .nav a.active { background: rgba(0,0,0,0.2); }
 
+        /* ── CATALOG NAV DROPDOWN ── */
+        .nav-dropdown { position: relative; }
+        .nav a.nav-dropdown-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-dropdown-toggle svg {
+            width: 12px;
+            height: 12px;
+            transition: transform .2s ease;
+        }
+        .nav-dropdown:hover .nav-dropdown-toggle svg,
+        .nav-dropdown:focus-within .nav-dropdown-toggle svg {
+            transform: rotate(180deg);
+        }
+        .nav-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 720px;
+            max-width: calc(100vw - 40px);
+            background: var(--white);
+            border: 1px solid var(--gray-4);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            box-shadow: var(--shadow-hover);
+            padding: 16px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: opacity .18s ease, transform .18s ease, visibility .18s;
+            z-index: 1100;
+            pointer-events: none;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu,
+        .nav-dropdown:focus-within .nav-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .nav-dropdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 0 8px 10px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--gray-4);
+        }
+        .nav-dropdown-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            color: var(--gray-2);
+        }
+        .nav .nav-dropdown-header a {
+            padding: 0;
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .nav .nav-dropdown-header a:hover {
+            background: none;
+            text-decoration: underline;
+        }
+        .nav-dropdown-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 4px 12px;
+        }
+        .nav .nav-dropdown-menu a {
+            display: block;
+            padding: 8px 10px;
+            border-radius: 6px;
+            color: var(--dark);
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.35;
+            white-space: normal;
+        }
+        .nav .nav-dropdown-menu a:hover {
+            background: var(--green-light);
+            color: var(--green-dark);
+        }
+
         /* ── BREADCRUMB ── */
         .breadcrumb {
             max-width: 1280px;
@@ -330,6 +419,11 @@
     }
     .nav-inner::-webkit-scrollbar {
         display: none; /* Скрываем скроллбар в Chrome/Safari */
+    }
+
+    /* На мобильных каталог открывается обычным переходом, без hover-меню. */
+    .nav-dropdown-menu {
+        display: none;
     }
 }
 
@@ -529,7 +623,31 @@
 <nav class="nav">
     <div class="nav-inner">
         {% with current=request.resolver_match.url_name %}
-        <a href="/catalog/" class="{% if current == 'catalog' %}active{% endif %}">Каталог</a>
+        <div class="nav-dropdown">
+            <a href="/catalog/"
+               class="nav-dropdown-toggle {% if current == 'catalog' %}active{% endif %}"
+               aria-haspopup="true">
+                Каталог
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6"/>
+                </svg>
+            </a>
+            <div class="nav-dropdown-menu" aria-label="Категорії">
+                <div class="nav-dropdown-header">
+                    <span class="nav-dropdown-title">Категорії</span>
+                    <a href="/catalog/">Всі категорії →</a>
+                </div>
+                <div class="nav-dropdown-grid">
+                    {% for category in nav_categories %}
+                        <a href="/catalog/?category={{ category.id }}">{{ category.name }}</a>
+                    {% empty %}
+                        <span style="grid-column: 1 / -1; padding: 8px 10px; color: var(--gray-2); font-size: 13px;">
+                            Категорії відсутні
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
         <a href="{% url 'promotions' %}" class="{% if current == 'promotions' %}active{% endif %}">Акції</a>
         <a href="{% url 'new_arrivals' %}" class="{% if current == 'new_arrivals' %}active{% endif %}">Новинки</a>
         <a href="{% url 'top_sales' %}" class="{% if current == 'top_sales' %}active{% endif %}">Топ продажів</a>

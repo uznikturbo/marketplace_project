@@ -16,6 +16,7 @@ def invalidate_product_cache(sender, instance, **kwargs):
 def invalidate_category_cache(sender, instance, **kwargs):
     cache.delete("all_categories")
     cache.delete("all_root_categories")
+    cache.delete("nav_categories")
 
     cache.delete(f"category_sub_ids_{instance.pk}")
 

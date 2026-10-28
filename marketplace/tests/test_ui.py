@@ -186,6 +186,44 @@ class HomePageUITests(UITestCase):
         expect(self.page.locator(".products-grid")).to_contain_text("Ноутбук Alpha")
         expect(self.page.locator(".products-grid")).not_to_contain_text("Футболка Beta")
 
+    def test_categories_scroll_with_arrows(self):
+        for index in range(12):
+            make_category(f"Категорія {index:02d}")
+
+        self.page.goto("/")
+
+        scroller = self.page.locator("#home-categories")
+        prev_button = self.page.locator('[data-category-direction="-1"]')
+        next_button = self.page.locator('[data-category-direction="1"]')
+
+        expect(prev_button).to_be_disabled()
+        expect(next_button).to_be_enabled()
+
+        next_button.click()
+        self.page.wait_for_timeout(600)
+
+        self.assertGreater(scroller.evaluate("el => el.scrollLeft"), 0)
+        expect(prev_button).to_be_enabled()
+
+    def test_catalog_dropdown_lists_root_categories_on_hover(self):
+        root = make_category("Електроніка")
+        make_category("Ноутбуки", parent=root)
+
+        self.page.goto("/")
+
+        menu = self.page.locator(".nav-dropdown-menu")
+        expect(menu).to_be_hidden()
+
+        self.page.locator(".nav-dropdown").hover()
+
+        expect(menu).to_be_visible()
+        expect(menu).to_contain_text("Електроніка")
+        expect(menu).not_to_contain_text("Ноутбуки")
+
+        menu.locator("a", has_text="Електроніка").click()
+
+        expect(self.page).to_have_url(re.compile(rf"\?category={root.pk}$"))
+
 
 @tag("ui")
 class CatalogUITests(UITestCase):
