@@ -147,7 +147,7 @@ rozetka2.0/
     │                         # secret key rotation task and command
     ├── templates/            # shared templates
     ├── static/               # source static assets
-    └── tests/                # test suite (233 unit/integration tests)
+    └── tests/                # test suite (234 unit/integration tests)
 ```
 
 Each app owns its models, views, URLs and templates. Shared helpers live in
@@ -327,7 +327,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **249 tests**: 233 unit/integration tests and 16 browser
+The suite contains **250 tests**: 234 unit/integration tests and 16 browser
 end-to-end tests. It does not require Redis: `marketplace.settings.test`
 switches to an in-memory cache and a fast password hasher. Browser tests need
 Playwright (see below); without it they are skipped.
@@ -440,6 +440,8 @@ the user cart and delete the guest one.
 
 - the vendor can cancel only an item whose product belongs to them;
 - shipped, completed and already cancelled orders are protected;
+- a LiqPay order cannot be changed while its payment is still pending, so the
+  callback amount cannot drift from the order total;
 - the item status becomes `cancelled`, and its quantity is returned to stock;
 - the order total is recalculated from the remaining active items;
 - the order itself becomes `cancelled` only when no active items remain.
