@@ -239,6 +239,23 @@ class CatalogUITests(UITestCase):
         expect(self.page.locator(".products-grid")).to_contain_text("Ноутбук Alpha")
         expect(self.page.locator(".products-grid")).not_to_contain_text("Футболка Beta")
 
+    def test_search_shows_live_product_suggestions(self):
+        product = make_product(name="Ноутбук Alpha")
+
+        self.page.goto("/")
+        search_input = self.page.locator('.search-bar input[name="q"]')
+        search_input.fill("ноут")
+
+        suggestions = self.page.locator(".search-suggestion-item")
+        expect(suggestions).to_have_count(1)
+        expect(suggestions).to_contain_text("Ноутбук Alpha")
+
+        suggestions.click()
+
+        expect(self.page).to_have_url(
+            re.compile(rf"/catalog/{product.pk}/detail/$")
+        )
+
     def test_catalog_pagination_navigates_to_second_page(self):
         for index in range(13):
             make_product(name=f"Paged UI {index:02d}")

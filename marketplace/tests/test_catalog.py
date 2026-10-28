@@ -50,6 +50,43 @@ class CatalogViewTests(BaseTestCase):
 
         self.assertContains(response, match.name)
 
+    def test_search_matches_category_name(self):
+        category = make_category(name="Ноутбуки")
+        match = make_product(name="Lenovo IdeaPad", category=category)
+        make_product(name="Office chair")
+
+        response = self.client.get(reverse("catalog"), {"q": "ноутбуки"})
+
+        self.assertContains(response, match.name)
+
+    def test_search_ranks_name_match_above_description_match(self):
+        name_match = make_product(name="Alpha keyboard")
+        description_match = make_product(
+            name="Other product", description="A keyboard for the office"
+        )
+
+        response = self.client.get(reverse("catalog"), {"q": "keyboard"})
+        names = [product.name for product in response.context["products"]]
+
+        self.assertLess(
+            names.index(name_match.name),
+            names.index(description_match.name),
+        )
+
+    def test_search_typo_fallback_finds_similar_product(self):
+        match = make_product(name="Ноутбук Lenovo")
+
+        response = self.client.get(reverse("catalog"), {"q": "ноутбк"})
+
+        self.assertContains(response, match.name)
+
+    def test_search_uses_synonyms(self):
+        match = make_product(name="Смартфон Samsung")
+
+        response = self.client.get(reverse("catalog"), {"q": "телефон"})
+
+        self.assertContains(response, match.name)
+
     def test_category_filter_includes_subcategories(self):
         root = make_category(name="Electronics")
         child = make_category(name="Phones", parent=root)
@@ -89,6 +126,50 @@ class CatalogViewTests(BaseTestCase):
         response = self.client.get(reverse("product_detail", args=[999999]))
 
         self.assertEqual(response.status_code, 404)
+
+
+class SearchSuggestionTests(BaseTestCase):
+    def test_returns_ranked_product_suggestions(self):
+        match = make_product(name="Wireless keyboard")
+        make_product(name="Office chair")
+
+        response = self.client.get(
+            reverse("search_suggest"), {"q": "keyboard"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["results"][0]["id"], match.pk)
+        self.assertEqual(data["results"][0]["name"], match.name)
+        self.assertEqual(data["catalog_url"], "/catalog/?q=keyboard")
+
+    def test_short_query_returns_empty_results(self):
+        make_product(name="Wireless keyboard")
+
+        response = self.client.get(reverse("search_suggest"), {"q": "k"})
+
+        self.assertEqual(response.json()["results"], [])
+
+    def test_unavailable_products_are_not_suggested(self):
+        make_product(name="Hidden keyboard", is_available=False)
+
+        response = self.client.get(
+            reverse("search_suggest"), {"q": "keyboard"}
+        )
+
+        self.assertEqual(response.json()["total"], 0)
+
+    def test_suggestions_are_limited_to_six_items(self):
+        for index in range(8):
+            make_product(name=f"Keyboard model {index}")
+
+        response = self.client.get(
+            reverse("search_suggest"), {"q": "keyboard"}
+        )
+
+        self.assertEqual(len(response.json()["results"]), 6)
+        self.assertEqual(response.json()["total"], 8)
 
 
 class CatalogPaginationTests(BaseTestCase):

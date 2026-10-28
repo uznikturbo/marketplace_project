@@ -5,7 +5,6 @@ from django.db.models import (
     Count,
     IntegerField,
     OuterRef,
-    Q,
     Subquery,
     Sum,
     Value,
@@ -13,8 +12,9 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_POST
 
 from core.pagination import paginate
@@ -22,6 +22,7 @@ from core.pagination import paginate
 from . import models
 from .decorators import confirmed_required
 from .models import CartItem
+from .search import normalize_query, search_products
 from .utils import get_all_subcategories_ids, get_favorite_ids, get_user_cart
 
 CATALOG_PAGE_SIZE = 12
@@ -38,6 +39,19 @@ CATALOG_PRESETS = {
     "new": {"title": "Новинки", "default_sort": "newest"},
     "top": {"title": "Топ продажів", "default_sort": "top"},
 }
+SEARCH_SUGGESTION_LIMIT = 6
+
+
+def _available_products():
+    return (
+        models.Product.objects.filter(is_available=True)
+        .select_related("category")
+        .prefetch_related("images", "discounts")
+        .annotate(
+            annotated_avg_rating=Avg("ratings__rating"),
+            annotated_ratings_count=Count("ratings", distinct=True),
+        )
+    )
 
 
 def _safe_referer_redirect(request):
@@ -63,7 +77,7 @@ def catalog_view(request, preset=None):
         if preset_config
         else CATALOG_DEFAULT_SORT
     )
-    query = request.GET.get("q")
+    query = normalize_query(request.GET.get("q"))
     raw_category_id = request.GET.get("category")
     sort = request.GET.get("sort", default_sort)
     if sort not in CATALOG_SORT_OPTIONS:
@@ -81,20 +95,10 @@ def catalog_view(request, preset=None):
         categories = list(models.Category.objects.filter(parent=None))
         cache.set("all_root_categories", categories, timeout=60 * 60 * 24)
 
-    products = (
-        models.Product.objects.filter(is_available=True)
-        .select_related("category")
-        .prefetch_related("images", "discounts")
-        .annotate(
-            annotated_avg_rating=Avg("ratings__rating"),
-            annotated_ratings_count=Count("ratings", distinct=True),
-        )
-    )
+    products = _available_products()
 
     if query:
-        products = products.filter(
-            Q(name__icontains=query) | Q(description__icontains=query)
-        ).distinct()
+        products = search_products(products, query)
 
     if current_category_id is not None:
         subcat_cache_key = f"category_sub_ids_{current_category_id}"
@@ -142,7 +146,12 @@ def catalog_view(request, preset=None):
     if preset == "top":
         products = products.filter(sales_count__gt=0)
 
-    products = products.order_by(*CATALOG_SORT_OPTIONS[sort])
+    if query:
+        products = products.order_by(
+            "-search_score", *CATALOG_SORT_OPTIONS[sort]
+        )
+    else:
+        products = products.order_by(*CATALOG_SORT_OPTIONS[sort])
 
     page_obj, page_range = paginate(request, products, CATALOG_PAGE_SIZE)
 
@@ -162,6 +171,54 @@ def catalog_view(request, preset=None):
             "show_sort": preset != "top",
             "user_favorite_ids": get_favorite_ids(request),
         },
+    )
+
+
+def search_suggest_view(request):
+    """Return a small ranked product list for the header search dropdown."""
+    query = normalize_query(request.GET.get("q"))
+    catalog_url = reverse("catalog")
+    if query:
+        catalog_url = f"{catalog_url}?{urlencode({'q': query})}"
+
+    if len(query) < 2:
+        return JsonResponse(
+            {
+                "query": query,
+                "results": [],
+                "total": 0,
+                "catalog_url": catalog_url,
+            }
+        )
+
+    products = search_products(_available_products(), query).order_by(
+        "-search_score", "-annotated_ratings_count", "-created_at"
+    )
+    total = products.count()
+    results = []
+
+    for product in products[:SEARCH_SUGGESTION_LIMIT]:
+        image = product.images.first()
+        results.append(
+            {
+                "id": product.pk,
+                "name": product.name,
+                "category": product.category.name,
+                "price": f"{product.price:.0f}",
+                "current_price": f"{product.get_current_price:.0f}",
+                "is_discounted": product.is_discounted,
+                "image": image.image_url if image else "",
+                "url": reverse("product_detail", args=[product.pk]),
+            }
+        )
+
+    return JsonResponse(
+        {
+            "query": query,
+            "results": results,
+            "total": total,
+            "catalog_url": catalog_url,
+        }
     )
 
 

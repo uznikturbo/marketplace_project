@@ -32,8 +32,10 @@ build step.
 
 ### Storefront
 
-- Product catalog with search, category filtering (including nested
-  categories), sorting, grid/list view and caching of category trees.
+- Product catalog with ranked search (name, category, description, synonyms
+  and typo fallback), live product suggestions under the header search,
+  category filtering (including nested categories), sorting, grid/list view
+  and caching of category trees.
 - Promotions, new arrivals and top sales pages built on the catalog with
   preset filters and ordering.
 - Product pages with average rating, reviews and active discounts.
@@ -147,7 +149,7 @@ rozetka2.0/
     │                         # secret key rotation task and command
     ├── templates/            # shared templates
     ├── static/               # source static assets
-    └── tests/                # test suite (234 unit/integration tests)
+    └── tests/                # test suite (242 unit/integration tests)
 ```
 
 Each app owns its models, views, URLs and templates. Shared helpers live in
@@ -327,7 +329,7 @@ See `.env.example` for a ready-to-copy template.
 
 ## Running the tests
 
-The suite contains **250 tests**: 234 unit/integration tests and 16 browser
+The suite contains **261 tests**: 242 unit/integration tests and 19 browser
 end-to-end tests. It does not require Redis: `marketplace.settings.test`
 switches to an in-memory cache and a fast password hasher. Browser tests need
 Playwright (see below); without it they are skipped.
@@ -547,8 +549,9 @@ They can be relaxed through environment variables while TLS is being set up.
 - No API layer (DRF); everything is server-rendered.
 - Automatic secret rotation only takes effect after a process restart, and
   needs shared storage when running several instances.
-- Full-text search uses `icontains`; a PostgreSQL trigram index would make it
-  scale better.
+- Search ranking is ORM-based (token, category, synonym and prefix scoring);
+  a PostgreSQL full-text/trigram index would scale better for very large
+  catalogs.
 - Payment and SMS integrations are tested with mocks; no sandbox end-to-end
   tests are included.
 - Cancelling a paid order item recalculates the order total but does not
